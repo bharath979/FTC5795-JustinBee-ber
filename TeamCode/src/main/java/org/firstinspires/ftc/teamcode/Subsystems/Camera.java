@@ -77,12 +77,12 @@ public class Camera {
     }
 
     private static class TagPoseFilter {
-        final KalmanFilter1D x = new KalmanFilter1D(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
-        final KalmanFilter1D y = new KalmanFilter1D(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
-        final KalmanFilter1D z = new KalmanFilter1D(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
-        final KalmanFilter1D yaw = new KalmanFilter1D(ANGLE_PROCESS_NOISE, ANGLE_MEASUREMENT_NOISE);
-        final KalmanFilter1D range = new KalmanFilter1D(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
-        final KalmanFilter1D bearing = new KalmanFilter1D(ANGLE_PROCESS_NOISE, ANGLE_MEASUREMENT_NOISE);
+        final KalmanFilter x = new KalmanFilter(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
+        final KalmanFilter y = new KalmanFilter(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
+        final KalmanFilter z = new KalmanFilter(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
+        final KalmanFilter yaw = new KalmanFilter(ANGLE_PROCESS_NOISE, ANGLE_MEASUREMENT_NOISE);
+        final KalmanFilter range = new KalmanFilter(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
+        final KalmanFilter bearing = new KalmanFilter(ANGLE_PROCESS_NOISE, ANGLE_MEASUREMENT_NOISE);
 
         FilteredPose update(AprilTagPoseFtc pose) {
             return new FilteredPose(
