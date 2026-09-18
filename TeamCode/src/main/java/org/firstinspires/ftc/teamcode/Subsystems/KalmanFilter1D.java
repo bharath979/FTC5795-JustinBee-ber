@@ -1,9 +1,6 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
-/**
- * Minimal scalar Kalman filter (constant-value model) used to smooth a single noisy
- * measurement stream, e.g. one field of an AprilTag pose.
- */
+
 public class KalmanFilter1D {
     private final double processNoise;
     private final double measurementNoise;
