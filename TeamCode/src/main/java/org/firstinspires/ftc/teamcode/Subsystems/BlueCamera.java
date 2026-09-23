@@ -14,18 +14,22 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagPoseFtc;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagSingleDetection;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 
-public class Camera {
-    // Tuned for AprilTag pose noise: low process noise (tag isn't expected to
-    // "teleport" between frames) and moderate measurement noise (raw pose jitter).
+public class BlueCamera {
+
     private static final double POSITION_PROCESS_NOISE = 0.02;
     private static final double POSITION_MEASUREMENT_NOISE = 2.0;
     private static final double ANGLE_PROCESS_NOISE = 0.05;
     private static final double ANGLE_MEASUREMENT_NOISE = 4.0;
+
+    // Blue CELL AprilTag IDs
+    public static final int[] AUDIENCE_SIDE_TAG_IDS = {38, 39, 40, 41};
+    public static final int[] FAR_SIDE_TAG_IDS = {42, 43, 44, 45};
 
     private AprilTagProcessor aprilTag;
     private VisionPortal visionPortal;
@@ -63,6 +67,41 @@ public class Camera {
         }
         return null;
     }
+
+    public static boolean isAudienceSideTag(int tagId) {
+        return containsId(AUDIENCE_SIDE_TAG_IDS, tagId);
+    }
+
+    public static boolean isFarSideTag(int tagId) {
+        return containsId(FAR_SIDE_TAG_IDS, tagId);
+    }
+
+    public static boolean isAllianceTag(int tagId) {
+        return isAudienceSideTag(tagId) || isFarSideTag(tagId);
+    }
+
+    private static boolean containsId(int[] ids, int tagId) {
+        for (int id : ids) {
+            if (id == tagId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<AprilTagSingleDetection> getAllianceDetections() {
+        List<AprilTagSingleDetection> allianceDetections = new ArrayList<>();
+        for (AprilTagDetection detection : getDetections()) {
+            if (detection instanceof AprilTagSingleDetection) {
+                AprilTagSingleDetection singleDetection = (AprilTagSingleDetection) detection;
+                if (isAllianceTag(singleDetection.id)) {
+                    allianceDetections.add(singleDetection);
+                }
+            }
+        }
+        return allianceDetections;
+    }
+
     public static class FilteredPose {
         public final double x, y, z, yaw, range, bearing;
 
@@ -107,12 +146,17 @@ public class Camera {
     public void update(Telemetry telemetry) {
         List<AprilTagDetection> detections = getDetections();
         telemetry.addData("Hive tags visible", detections.size());
+        telemetry.addData("Blue tags visible", getAllianceDetections().size());
         for (AprilTagDetection detection : detections) {
             if (detection instanceof AprilTagSingleDetection) {
                 AprilTagSingleDetection singleDetection = (AprilTagSingleDetection) detection;
+                if (!isAllianceTag(singleDetection.id)) {
+                    continue;
+                }
                 if (singleDetection.metadata != null) {
-                    telemetry.addLine(String.format("ID %d (%s): range=%.1fin bearing=%.1fdeg yaw=%.1fdeg",
-                            singleDetection.id, singleDetection.metadata.name,
+                    String side = isAudienceSideTag(singleDetection.id) ? "audience" : "far";
+                    telemetry.addLine(String.format("ID %d (%s, blue %s side): range=%.1fin bearing=%.1fdeg yaw=%.1fdeg",
+                            singleDetection.id, singleDetection.metadata.name, side,
                             detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.yaw));
                     FilteredPose filtered = getFilteredPose(singleDetection.id);
                     if (filtered != null) {
