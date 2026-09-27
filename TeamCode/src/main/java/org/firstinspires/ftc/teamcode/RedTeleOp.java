@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
-import org.firstinspires.ftc.teamcode.Subsystems.BlueCamera;
+import org.firstinspires.ftc.teamcode.Subsystems.RedCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.ColorSensor;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
@@ -11,12 +11,12 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 @TeleOp
-public class MainTeleOp extends LinearOpMode {
+public class RedTeleOp extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        BlueCamera blueCamera = new BlueCamera();
-        blueCamera.initiate(hardwareMap);
+        RedCamera redCamera = new RedCamera();
+        redCamera.initiate(hardwareMap);
 
         Drivetrain drivetrain = new Drivetrain();
         drivetrain.initiate(hardwareMap);
@@ -49,7 +49,7 @@ public class MainTeleOp extends LinearOpMode {
             }
 
 
-            blueCamera.update(telemetry);
+            redCamera.update(telemetry);
             telemetry.update();
             colorSensor.update();
 
@@ -78,6 +78,6 @@ public class MainTeleOp extends LinearOpMode {
 
             telemetry.update();
         }
-        blueCamera.close();
+        redCamera.close();
     }
 }

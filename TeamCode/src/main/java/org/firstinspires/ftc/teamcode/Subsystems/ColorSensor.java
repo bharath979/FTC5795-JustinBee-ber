@@ -84,7 +84,7 @@ public class ColorSensor {
         // A "new" ball is one where we just transitioned from seeing nothing
         // to seeing a color. Once the ball clears (back to NONE), the sensor
         // is ready to flag the next one.
-        newDetection = (detected != DetectedColor.NONE && lastColor == DetectedColor.NONE);
+        newDetection = (detected != DetectedColor.NONE && currentColor == DetectedColor.NONE);
 
         lastColor = currentColor;
         currentColor = detected;
@@ -107,6 +107,21 @@ public class ColorSensor {
 
     public DetectedColor getDetectedColor() {
         return currentColor;
+    }
+
+    /** Raw hue (0-360) from the last update() -- useful for tuning the hue ranges. */
+    public float getHue() {
+        return hsvValues[0];
+    }
+
+    /** Raw saturation (0-1) from the last update(). */
+    public float getSaturation() {
+        return hsvValues[1];
+    }
+
+    /** Raw brightness/value (0-1) from the last update(). */
+    public float getBrightness() {
+        return hsvValues[2];
     }
 
     /** The current numeric value for whatever color this sensor sees right now. */
