@@ -1,7 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
-import org.firstinspires.ftc.teamcode.Subsystems.Camera;
+import org.firstinspires.ftc.teamcode.Subsystems.BlueCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.ColorSensor;
+import org.firstinspires.ftc.teamcode.Subsystems.RedCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
 import org.firstinspires.ftc.teamcode.Subsystems.Shooter;
@@ -15,8 +16,11 @@ public class MainTeleOp extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Camera camera = new Camera();
-        camera.initiate(hardwareMap);
+        BlueCamera blueCamera = new BlueCamera();
+        blueCamera.initiate(hardwareMap);
+
+        RedCamera redCamera = new RedCamera();
+        redCamera.initiate(hardwareMap);
 
         Drivetrain drivetrain = new Drivetrain();
         drivetrain.initiate(hardwareMap);
@@ -36,15 +40,17 @@ public class MainTeleOp extends LinearOpMode {
             double x = gamepad1.left_stick_x * 1.1;
             double rx = gamepad1.right_stick_x;
             drivetrain.run(x, y, rx);
+
+            double slidespower = 0;
             if(gamepad1.right_bumper) {
-                slides.setPower(0);
+                slides.setPower(slidespower);
             }else if(gamepad1.left_bumper){
-                slides.setPower(-0);
+                slides.setPower(slidespower);
             }else{
                 slides.stop();
             }
 
-            camera.update(telemetry);
+            blueCamera.update(telemetry);
             telemetry.update();
             colorSensor.update();
 
@@ -70,6 +76,6 @@ public class MainTeleOp extends LinearOpMode {
             telemetry.addData("At Min", slides.isAtMin());
             telemetry.update();
         }
-        camera.close();
+        blueCamera.close();
     }
 }

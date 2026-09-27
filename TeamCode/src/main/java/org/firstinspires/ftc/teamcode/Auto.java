@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-import org.firstinspires.ftc.teamcode.Subsystems.Camera;
+import org.firstinspires.ftc.teamcode.Subsystems.BlueCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 
 @Autonomous
@@ -11,7 +11,7 @@ public class Auto extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Camera camera = new Camera();
+        BlueCamera camera = new BlueCamera();
         camera.initiate(hardwareMap);
 
         Drivetrain drivetrain = new Drivetrain();
