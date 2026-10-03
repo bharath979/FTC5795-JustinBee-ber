@@ -48,9 +48,7 @@ public class MainTeleOp extends LinearOpMode {
                 slides.stop();
             }
 
-
             blueCamera.update(telemetry);
-            telemetry.update();
             colorSensor.update();
 
             if (colorSensor.isNewDetection()) {
@@ -68,7 +66,8 @@ public class MainTeleOp extends LinearOpMode {
             }
 
 
-            telemetry.addData("Detected Color", colorSensor.getDetectedColor());
+
+            colorSensor.addTelemetry(telemetry);
             telemetry.addData("Hood Width", hood.getWidthPosition());
             telemetry.addData("Hood Angle", hood.getAnglePosition());
             telemetry.addData("Queued Velocity", shooter.getQueuedVelocity());
