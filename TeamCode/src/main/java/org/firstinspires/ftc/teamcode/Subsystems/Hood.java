@@ -10,7 +10,7 @@ public class Hood {
     // Placeholder width positions. Red and blue share one value since the
     // balls are the same size; yellow (smaller ball) gets its own.
     private static final double WIDTH_RED_BLUE = 0.50;
-    private static final double WIDTH_YELLOW = 0.30;
+    private static final double WIDTH_YELLOW = 0.29;
     private static final double WIDTH_DEFAULT = 0.50; // used when no ball is detected
 
     // Placeholder angle positions -- one per color, plus a default.

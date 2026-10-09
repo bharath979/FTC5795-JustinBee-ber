@@ -30,12 +30,18 @@ public class BlueCamera {
     // Limelight pipeline index set up for AprilTags (36h11) in the Limelight web UI
     private static final int APRILTAG_PIPELINE = 0;
 
+    // How far the Limelight is tilted up from level to see the hive.
+    // Placeholder: measure the mount angle on the robot.
+    private static final double CAMERA_PITCH_DEGREES = 20.0;
+
     // Blue CELL AprilTag IDs
     public static final int[] AUDIENCE_SIDE_TAG_IDS = {38, 39, 40, 41};
     public static final int[] FAR_SIDE_TAG_IDS = {42, 43, 44, 45};
 
     private Limelight3A limelight;
     private final Map<Integer, TagPoseFilter> poseFilters = new HashMap<>();
+    private boolean aimSideChosen;
+    private boolean aimingFarSide;
 
     public void initiate(HardwareMap hardwareMap) {
         initiate(hardwareMap, "limelight");
@@ -64,6 +70,29 @@ public class BlueCamera {
             }
         }
         return null;
+    }
+
+    /** True if this one specific tag is in view right now. */
+    public boolean isTagVisible(int tagId) {
+        return getDetection(tagId) != null;
+    }
+
+    /** IDs of every tag in view right now, alliance or not. */
+    public List<Integer> getVisibleTagIds() {
+        List<Integer> ids = new ArrayList<>();
+        for (LLResultTypes.FiducialResult detection : getDetections()) {
+            ids.add(detection.getFiducialId());
+        }
+        return ids;
+    }
+
+    /**
+     * Limelight tx (degrees, positive = right) of one specific tag, or null
+     * if it isn't visible. Pass to the turret to aim at that tag only.
+     */
+    public Double getTx(int tagId) {
+        LLResultTypes.FiducialResult detection = getDetection(tagId);
+        return detection == null ? null : detection.getTargetXDegrees();
     }
 
     public static boolean isAudienceSideTag(int tagId) {
@@ -97,6 +126,80 @@ public class BlueCamera {
         return allianceDetections;
     }
 
+    /**
+     * The tags to aim with: only the audience-side group (38-41) or only the
+     * far-side group (42-45), never a mix. Whichever side is seen first is
+     * locked in for the rest of the OpMode (the bigger, closer one if both
+     * are seen at once); the other side is ignored from then on. Empty if
+     * none of the locked side's tags are visible.
+     */
+    public List<LLResultTypes.FiducialResult> getAimDetections() {
+        List<LLResultTypes.FiducialResult> audience = new ArrayList<>();
+        List<LLResultTypes.FiducialResult> far = new ArrayList<>();
+        double audienceArea = 0;
+        double farArea = 0;
+        for (LLResultTypes.FiducialResult detection : getDetections()) {
+            if (isAudienceSideTag(detection.getFiducialId())) {
+                audience.add(detection);
+                audienceArea += detection.getTargetArea();
+            } else if (isFarSideTag(detection.getFiducialId())) {
+                far.add(detection);
+                farArea += detection.getTargetArea();
+            }
+        }
+        if (!aimSideChosen) {
+            if (audience.isEmpty() && far.isEmpty()) {
+                return audience;
+            }
+            aimingFarSide = farArea > audienceArea;
+            aimSideChosen = true;
+        }
+        return aimingFarSide ? far : audience;
+    }
+
+    /** Forgets the locked side so the next blue tags seen pick it again. */
+    public void resetAimSide() {
+        aimSideChosen = false;
+    }
+
+    /**
+     * Limelight tx (degrees, positive = right) to aim the turret at, or null
+     * if no blue tags are visible. Averages the visible tags of one side so
+     * the turret points at the middle of that group.
+     * Raw tx, not filtered, so the turret loop doesn't lag behind the filter.
+     */
+    public Double getAimTx() {
+        List<LLResultTypes.FiducialResult> group = getAimDetections();
+        if (group.isEmpty()) {
+            return null;
+        }
+        double sum = 0;
+        for (LLResultTypes.FiducialResult detection : group) {
+            sum += detection.getTargetXDegrees();
+        }
+        return sum / group.size();
+    }
+
+    /** The largest (closest) tag of the side being aimed at, or null if none are visible. */
+    public LLResultTypes.FiducialResult getAimDetection() {
+        LLResultTypes.FiducialResult best = null;
+        for (LLResultTypes.FiducialResult detection : getAimDetections()) {
+            if (best == null || detection.getTargetArea() > best.getTargetArea()) {
+                best = detection;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Limelight's timestamp for the latest camera frame. Only changes when a
+     * new frame arrives, so it tells the turret whether tx is fresh.
+     */
+    public double getFrameTimestamp() {
+        LLResult result = limelight.getLatestResult();
+        return result == null ? 0 : result.getTimestamp();
+    }
+
     /** Tag pose relative to the camera, in inches and degrees (x right, y forward, z up). */
     public static class TagPose {
         public final double x, y, z, yaw, range, bearing;
@@ -118,9 +221,11 @@ public class BlueCamera {
         }
         // Limelight camera space: +x right, +y down, +z out of the lens
         Position position = pose.getPosition().toUnit(DistanceUnit.INCH);
+        // Undo the upward tilt so y is distance along the floor and z is height
+        double pitch = Math.toRadians(CAMERA_PITCH_DEGREES);
         double x = position.x;
-        double y = position.z;
-        double z = -position.y;
+        double y = position.z * Math.cos(pitch) + position.y * Math.sin(pitch);
+        double z = position.z * Math.sin(pitch) - position.y * Math.cos(pitch);
         double yaw = pose.getOrientation().getYaw(AngleUnit.DEGREES);
         double range = Math.hypot(x, y);
         // Limelight tx is positive to the right; bearing is positive to the left
@@ -167,7 +272,11 @@ public class BlueCamera {
         }
         List<LLResultTypes.FiducialResult> detections = getDetections();
         telemetry.addData("Hive tags visible", detections.size());
+        telemetry.addData("Visible tag IDs", getVisibleTagIds());
         telemetry.addData("Blue tags visible", getAllianceDetections().size());
+        getAimDetections();
+        telemetry.addData("Locked onto", !aimSideChosen ? "nothing yet"
+                : aimingFarSide ? "far side (42-45)" : "audience side (38-41)");
         for (LLResultTypes.FiducialResult detection : detections) {
             int id = detection.getFiducialId();
             if (!isAllianceTag(id)) {

@@ -6,6 +6,7 @@ import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
 import org.firstinspires.ftc.teamcode.Subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.Subsystems.Slides;
+import org.firstinspires.ftc.teamcode.Subsystems.Turret;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -25,9 +26,10 @@ public class MainTeleOp extends LinearOpMode {
 
         Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
 
-
         Shooter shooter = new Shooter(hardwareMap, "Shooter");
         Slides slides = new Slides(hardwareMap, "UpMotor", "DownMotor");
+
+        Turret turret = new Turret(hardwareMap, "TurretLeft", "TurretRight");
 
 
         waitForStart();
@@ -56,7 +58,6 @@ public class MainTeleOp extends LinearOpMode {
                 hood.setForColor(color);
                 shooter.setVelocityForColor(color);
             }
-
             // --- Shooter: spins at the queued speed while the trigger is held ---
 
             if (gamepad1.right_trigger > 0.1) {
@@ -65,6 +66,8 @@ public class MainTeleOp extends LinearOpMode {
                 shooter.stop();
             }
 
+            Double aimTx = blueCamera.getAimTx();
+            turret.track(aimTx, blueCamera.getFrameTimestamp());
 
 
             colorSensor.addTelemetry(telemetry);
@@ -74,7 +77,11 @@ public class MainTeleOp extends LinearOpMode {
             telemetry.addData("Slide Position", slides.getPosition());
             telemetry.addData("At Max", slides.isAtMax());
             telemetry.addData("At Min", slides.isAtMin());
-
+            telemetry.addData("Aim tx (deg)", aimTx == null ? "no tag" : aimTx);
+            telemetry.addData("Tag Speed (deg/s)", turret.getBearingRate());
+            telemetry.addData("Turret Position", turret.getPosition());
+            telemetry.addData("Turret Tracking", turret.isTracking());
+            telemetry.addData("Turret At Limit", turret.isAtLimit());
             telemetry.update();
         }
         blueCamera.close();
