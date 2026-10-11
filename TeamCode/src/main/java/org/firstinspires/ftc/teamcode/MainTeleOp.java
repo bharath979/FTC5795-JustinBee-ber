@@ -26,7 +26,8 @@ public class MainTeleOp extends LinearOpMode {
         Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
 
 
-        Shooter shooter = new Shooter(hardwareMap, "Shooter");
+        Shooter shooter = new Shooter(hardwareMap, "backLeftMotor");
+        //Check why two motors are used for slides
         Slides slides = new Slides(hardwareMap, "UpMotor", "DownMotor");
 
 
