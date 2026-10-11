@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Subsystems.BlueCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.ColorSensor;
+import org.firstinspires.ftc.teamcode.Subsystems.Gate;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
 import org.firstinspires.ftc.teamcode.Subsystems.Ity;
 import org.firstinspires.ftc.teamcode.Subsystems.Turret;
@@ -24,11 +25,26 @@ public class test extends LinearOpMode {
 
         Turret turret = new Turret(hardwareMap, "TurretLeft", "TurretRight");
 
+        Gate gate = new Gate();
+        gate.initiate(hardwareMap);
+
+        // On INIT, put the hood width at its fixed position (no movement if it is already there).
+        hood.goToWidth();
+
         waitForStart();
+
+        // Put the hood at its starting position (fixed width, start angle).
+        hood.goToStart();
+        gate.close();
 
         while (opModeIsActive()) {
 
-            if (gamepad1.left_trigger > 0.1) {
+            // B toggles the gate open/closed.
+            if (gamepad1.bWasPressed()) {
+                gate.toggle();
+            }
+
+            if (gamepad1.right_trigger > 0.1) {
                 ity.setState(Ity.States.VERITY);
             } else if (gamepad1.a) {
                 ity.setState(Ity.States.STOP);
@@ -44,14 +60,28 @@ public class test extends LinearOpMode {
                 ity.setVerityPowerForColor(color);
             }
 
+            if (gamepad1.dpadUpWasPressed()) {
+                hood.adjustAngle(1);
+            } else if (gamepad1.dpadDownWasPressed()) {
+                hood.adjustAngle(-1);
+            }
+            if (gamepad1.dpadRightWasPressed()) {
+                hood.adjustYellowWidth(1);
+            } else if (gamepad1.dpadLeftWasPressed()) {
+                hood.adjustYellowWidth(-1);
+            }
+
             Double aimTx = blueCamera.getAimTx();
             turret.track(aimTx, blueCamera.getFrameTimestamp());
 
             telemetry.addData("Ity State", ity.getState());
             telemetry.addData("Verity Power", Ity.verityPower);
+            telemetry.addData("Gate", gate.getState());
+            telemetry.addData("Gate Position", gate.getPosition());
             colorSensor.addTelemetry(telemetry);
             telemetry.addData("Hood Width", hood.getWidthPosition());
             telemetry.addData("Hood Angle", hood.getAnglePosition());
+            telemetry.addData("Yellow Width", hood.getYellowWidth());
             telemetry.addData("Aim tx (deg)", aimTx == null ? "no tag" : aimTx);
             telemetry.addData("Tag Speed (deg/s)", turret.getBearingRate());
             telemetry.addData("Turret Position", turret.getPosition());

@@ -4,6 +4,7 @@ import org.firstinspires.ftc.teamcode.Subsystems.BlueCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.ColorSensor;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
+import org.firstinspires.ftc.teamcode.Subsystems.Ity;
 import org.firstinspires.ftc.teamcode.Subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.Subsystems.Slides;
 import org.firstinspires.ftc.teamcode.Subsystems.Turret;
@@ -18,12 +19,11 @@ public class MainTeleOp extends LinearOpMode {
     public void runOpMode() {
         BlueCamera blueCamera = new BlueCamera();
         blueCamera.initiate(hardwareMap);
-
         Drivetrain drivetrain = new Drivetrain();
         drivetrain.initiate(hardwareMap);
 
         ColorSensor colorSensor = new ColorSensor(hardwareMap, "ColorSensor");
-
+        Ity ity = new Ity();
         Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
 
         Shooter shooter = new Shooter(hardwareMap, "Shooter");
@@ -58,6 +58,8 @@ public class MainTeleOp extends LinearOpMode {
                 hood.setForColor(color);
                 shooter.setVelocityForColor(color);
             }
+
+
             // --- Shooter: spins at the queued speed while the trigger is held ---
 
             if (gamepad1.right_trigger > 0.1) {
