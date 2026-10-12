@@ -10,8 +10,8 @@ public class Intake {
 
 
     public void initiate(HardwareMap hardwaremap) {
-        intakeMotor = hardwaremap.dcMotor.get("intakeMotor");
-        transferMotor = hardwaremap.dcMotor.get("transferMotor");
+        intakeMotor = hardwaremap.dcMotor.get("backLeftMotor");
+        transferMotor = hardwaremap.dcMotor.get("frontLeftMotor");
         transferMotor.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
