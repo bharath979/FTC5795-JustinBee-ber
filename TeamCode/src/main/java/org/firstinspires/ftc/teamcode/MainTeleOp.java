@@ -68,12 +68,13 @@ public class MainTeleOp extends LinearOpMode {
                 shooter.stop();
             }
 
-            if(gamepad1.left_trigger > 0.1) {
-                intake.run();
-            }else {
-                intake.stop();
+            if (gamepad1.right_trigger > 0.1) {
+                intake.setState(Intake.States.IN);
+            } else if (gamepad1.left_trigger > 0.1) {
+                intake.setState(Intake.States.OUT);
+            } else {
+                intake.setState(Intake.States.STOP);
             }
-
 
 
             colorSensor.addTelemetry(telemetry);

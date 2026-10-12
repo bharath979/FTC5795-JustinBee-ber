@@ -6,6 +6,7 @@ import org.firstinspires.ftc.teamcode.Subsystems.BlueCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.ColorSensor;
 import org.firstinspires.ftc.teamcode.Subsystems.Gate;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
+import org.firstinspires.ftc.teamcode.Subsystems.Intake;
 import org.firstinspires.ftc.teamcode.Subsystems.Ity;
 import org.firstinspires.ftc.teamcode.Subsystems.Turret;
 @TeleOp
@@ -28,6 +29,8 @@ public class test extends LinearOpMode {
         Gate gate = new Gate();
         gate.initiate(hardwareMap);
 
+        Intake intake = new Intake();
+        intake.initiate(hardwareMap);
         // On INIT, put the hood width at its fixed position (no movement if it is already there).
         hood.goToWidth();
 
@@ -39,12 +42,20 @@ public class test extends LinearOpMode {
 
         while (opModeIsActive()) {
 
-            // B toggles the gate open/closed.
             if (gamepad1.bWasPressed()) {
                 gate.toggle();
             }
 
             if (gamepad1.right_trigger > 0.1) {
+                intake.setState(Intake.States.IN);
+            } else if (gamepad1.left_trigger > 0.1) {
+                intake.setState(Intake.States.OUT);
+            } else {
+                intake.setState(Intake.States.STOP);
+            }
+            intake.update();
+
+            if (gamepad1.x) {
                 ity.setState(Ity.States.VERITY);
             } else if (gamepad1.a) {
                 ity.setState(Ity.States.STOP);

@@ -20,7 +20,7 @@ public class Ity {
     public static double verityPower = verityBluePower;
 
     public void initiate(HardwareMap hardwareMap) {
-        shooterMotor = hardwareMap.dcMotor.get("shooterMotor");
+        shooterMotor = hardwareMap.dcMotor.get("shooter");
         shooterMotor.setDirection(DcMotorSimple.Direction.REVERSE);
     }
     public void setState(States newState) {
