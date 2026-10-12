@@ -66,6 +66,29 @@ public class RedCamera {
         return null;
     }
 
+    /** True if this one specific tag is in view right now. */
+    public boolean isTagVisible(int tagId) {
+        return getDetection(tagId) != null;
+    }
+
+    /** IDs of every tag in view right now, alliance or not. */
+    public List<Integer> getVisibleTagIds() {
+        List<Integer> ids = new ArrayList<>();
+        for (LLResultTypes.FiducialResult detection : getDetections()) {
+            ids.add(detection.getFiducialId());
+        }
+        return ids;
+    }
+
+    /**
+     * Limelight tx (degrees, positive = right) of one specific tag, or null
+     * if it isn't visible. Pass to the turret to aim at that tag only.
+     */
+    public Double getTx(int tagId) {
+        LLResultTypes.FiducialResult detection = getDetection(tagId);
+        return detection == null ? null : detection.getTargetXDegrees();
+    }
+
     public static boolean isAudienceSideTag(int tagId) {
         return containsId(AUDIENCE_SIDE_TAG_IDS, tagId);
     }
@@ -95,6 +118,21 @@ public class RedCamera {
             }
         }
         return allianceDetections;
+    }
+
+    /**
+     * Limelight tx (degrees, positive = right) of the alliance tag to aim the
+     * turret at, or null if none are visible. Uses the largest (closest) tag.
+     * Raw tx, not filtered, so the turret loop doesn't lag behind the filter.
+     */
+    public Double getAimTx() {
+        LLResultTypes.FiducialResult best = null;
+        for (LLResultTypes.FiducialResult detection : getAllianceDetections()) {
+            if (best == null || detection.getTargetArea() > best.getTargetArea()) {
+                best = detection;
+            }
+        }
+        return best == null ? null : best.getTargetXDegrees();
     }
 
     /** Tag pose relative to the camera, in inches and degrees (x right, y forward, z up). */
@@ -167,6 +205,7 @@ public class RedCamera {
         }
         List<LLResultTypes.FiducialResult> detections = getDetections();
         telemetry.addData("Hive tags visible", detections.size());
+        telemetry.addData("Visible tag IDs", getVisibleTagIds());
         telemetry.addData("Red tags visible", getAllianceDetections().size());
         for (LLResultTypes.FiducialResult detection : detections) {
             int id = detection.getFiducialId();

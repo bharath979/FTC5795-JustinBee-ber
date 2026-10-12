@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
+import com.qualcomm.hardware.broadcom.BroadcomColorSensor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
@@ -55,7 +56,7 @@ public class ColorSensor {
     private static final float YELLOW_MAX_BLUE_RATIO = 0.6f;
 
     // Same color must be seen this many loops in a row before it's reported.
-    private static final int STABLE_LOOPS = 3;
+    private static final int STABLE_LOOPS = 2;
 
     // ---------------------------------------------------
 
@@ -79,6 +80,19 @@ public class ColorSensor {
     public ColorSensor(HardwareMap hardwareMap, String sensorName) {
         colorSensor = hardwareMap.get(NormalizedColorSensor.class, sensorName);
         colorSensor.setGain(GAIN);
+
+        // The SDK leaves the V3 taking a new color and distance sample only
+        // every 100ms. Sample as fast as the chip allows at the same
+        // resolution, so the R/G/B numbers stay the same size.
+        if (colorSensor instanceof BroadcomColorSensor) {
+            BroadcomColorSensor broadcom = (BroadcomColorSensor) colorSensor;
+            broadcom.write8(BroadcomColorSensor.Register.LS_MEAS_RATE,
+                    (BroadcomColorSensor.LSResolution.R16BIT.bVal << 4)
+                            | BroadcomColorSensor.LSMeasurementRate.R25ms.bVal);
+            broadcom.write8(BroadcomColorSensor.Register.PS_MEAS_RATE,
+                    (BroadcomColorSensor.PSResolution.R11BIT.bVal << 3)
+                            | BroadcomColorSensor.PSMeasurementRate.R6_25ms.bVal);
+        }
 
         if (colorSensor instanceof SwitchableLight) {
             ((SwitchableLight) colorSensor).enableLight(true);
@@ -115,7 +129,9 @@ public class ColorSensor {
             currentColor = candidateColor;
         }
 
-        newDetection = (previous == DetectedColor.NONE && currentColor != DetectedColor.NONE);
+        // Also fires on a color -> different color change, so a ball that is
+        // misread for a moment as it enters still ends up with its real color.
+        newDetection = (currentColor != DetectedColor.NONE && currentColor != previous);
     }
 
     private DetectedColor classify() {
@@ -159,8 +175,9 @@ public class ColorSensor {
     }
 
     /**
-     * True only on the single loop where a ball first shows up (NONE -> a color).
-     * Use it to trigger the hood/flywheel exactly once per ball.
+     * True only on the single loop where the reported color changes to a new
+     * ball color (NONE -> a color, or one color -> another).
+     * Use it to trigger the hood/flywheel once per color change.
      */
     public boolean isNewDetection() {
         return newDetection;

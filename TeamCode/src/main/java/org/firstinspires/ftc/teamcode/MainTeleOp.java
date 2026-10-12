@@ -4,6 +4,7 @@ import org.firstinspires.ftc.teamcode.Subsystems.BlueCamera;
 import org.firstinspires.ftc.teamcode.Subsystems.ColorSensor;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
+import org.firstinspires.ftc.teamcode.Subsystems.Intake;
 import org.firstinspires.ftc.teamcode.Subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.Subsystems.Slides;
 
@@ -25,10 +26,11 @@ public class MainTeleOp extends LinearOpMode {
 
         Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
 
-
-        Shooter shooter = new Shooter(hardwareMap, "backLeftMotor");
-        //Check why two motors are used for slides
+        Shooter shooter = new Shooter(hardwareMap, "Shooter");
         Slides slides = new Slides(hardwareMap, "UpMotor", "DownMotor");
+
+        Intake intake = new Intake();
+        intake.initiate(hardwareMap);
 
 
         waitForStart();
@@ -64,6 +66,12 @@ public class MainTeleOp extends LinearOpMode {
                 shooter.spin();
             } else {
                 shooter.stop();
+            }
+
+            if(gamepad1.left_trigger > 0.1) {
+                intake.run();
+            }else {
+                intake.stop();
             }
 
 
