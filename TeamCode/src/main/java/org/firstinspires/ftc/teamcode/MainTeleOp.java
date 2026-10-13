@@ -5,6 +5,7 @@ import org.firstinspires.ftc.teamcode.Subsystems.ColorSensor;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.Hood;
 import org.firstinspires.ftc.teamcode.Subsystems.Intake;
+import org.firstinspires.ftc.teamcode.Subsystems.Ity;
 import org.firstinspires.ftc.teamcode.Subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.Subsystems.Slides;
 
@@ -26,7 +27,8 @@ public class MainTeleOp extends LinearOpMode {
 
         Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
 
-        Shooter shooter = new Shooter(hardwareMap, "shooter");
+        Ity ity = new Ity();
+        ity.initiate(hardwareMap);
         //Slides slides = new Slides(hardwareMap, "frontRightMotor", "frontRightMotor");
 
         Intake intake = new Intake();
@@ -61,13 +63,12 @@ public class MainTeleOp extends LinearOpMode {
           //  }
 
             // --- Shooter: spins at the queued speed while the trigger i
-            // s held ---
-
-            if (gamepad1.a) {
-                shooter.spin();
-            } else {
-                shooter.stop();
+            if (gamepad1.x) {
+                ity.setState(Ity.States.VERITY);
+            } else if (gamepad1.a) {
+                ity.setState(Ity.States.STOP);
             }
+            ity.update();
 
             if (gamepad1.right_trigger > 0.1) {
                 intake.setState(Intake.States.IN);
@@ -76,12 +77,12 @@ public class MainTeleOp extends LinearOpMode {
             } else {
                 intake.setState(Intake.States.STOP);
             }
+            
 
 
             colorSensor.addTelemetry(telemetry);
             telemetry.addData("Hood Width", hood.getWidthPosition());
             telemetry.addData("Hood Angle", hood.getAnglePosition());
-            telemetry.addData("Queued Velocity", shooter.getQueuedVelocity());
             /*telemetry.addData("Slide Position", slides.getPosition());
             telemetry.addData("At Max", slides.isAtMax());
             telemetry.addData("At Min", slides.isAtMin()); */
