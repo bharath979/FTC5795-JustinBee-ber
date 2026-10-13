@@ -77,6 +77,7 @@ public class MainTeleOp extends LinearOpMode {
             } else {
                 intake.setState(Intake.States.STOP);
             }
+            intake.update();
             
 
 
