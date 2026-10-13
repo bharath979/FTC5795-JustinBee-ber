@@ -16,8 +16,8 @@ public class MainTeleOp extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        BlueCamera blueCamera = new BlueCamera();
-        blueCamera.initiate(hardwareMap);
+        //BlueCamera blueCamera = new BlueCamera();
+       // blueCamera.initiate(hardwareMap);
 
         Drivetrain drivetrain = new Drivetrain();
         drivetrain.initiate(hardwareMap);
@@ -26,8 +26,8 @@ public class MainTeleOp extends LinearOpMode {
 
         Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
 
-        Shooter shooter = new Shooter(hardwareMap, "Shooter");
-        Slides slides = new Slides(hardwareMap, "UpMotor", "DownMotor");
+        Shooter shooter = new Shooter(hardwareMap, "shooter");
+        //Slides slides = new Slides(hardwareMap, "frontRightMotor", "frontRightMotor");
 
         Intake intake = new Intake();
         intake.initiate(hardwareMap);
@@ -42,27 +42,28 @@ public class MainTeleOp extends LinearOpMode {
             double rx = gamepad1.right_stick_x;
             drivetrain.run(x, y, rx);
 
-            double slidespower = 0;
-            if(gamepad1.right_bumper) {
-                slides.setPower(slidespower);
-            }else if(gamepad1.left_bumper){
-                slides.setPower(slidespower);
-            }else{
-                slides.stop();
-            }
+            // * double slidespower = 0;
+           // if(gamepad1.right_bumper) {
+             //   slides.setPower(slidespower);
+            //}else if(gamepad1.left_bumper){
+              //  slides.setPower(slidespower);
+            //}else{
+             //   slides.stop();
+            // } */
 
-            blueCamera.update(telemetry);
-            colorSensor.update();
+            //blueCamera.update(telemetry);
+            //colorSensor.update();
 
-            if (colorSensor.isNewDetection()) {
-                ColorSensor.DetectedColor color = colorSensor.getDetectedColor();
-                hood.setForColor(color);
-                shooter.setVelocityForColor(color);
-            }
+          //  if (colorSensor.isNewDetection()) {
+              //  ColorSensor.DetectedColor color = colorSensor.getDetectedColor();
+               // hood.setForColor(color);
+            //    shooter.setVelocityForColor(color);
+          //  }
 
-            // --- Shooter: spins at the queued speed while the trigger is held ---
+            // --- Shooter: spins at the queued speed while the trigger i
+            // s held ---
 
-            if (gamepad1.right_trigger > 0.1) {
+            if (gamepad1.a) {
                 shooter.spin();
             } else {
                 shooter.stop();
@@ -81,12 +82,12 @@ public class MainTeleOp extends LinearOpMode {
             telemetry.addData("Hood Width", hood.getWidthPosition());
             telemetry.addData("Hood Angle", hood.getAnglePosition());
             telemetry.addData("Queued Velocity", shooter.getQueuedVelocity());
-            telemetry.addData("Slide Position", slides.getPosition());
+            /*telemetry.addData("Slide Position", slides.getPosition());
             telemetry.addData("At Max", slides.isAtMax());
-            telemetry.addData("At Min", slides.isAtMin());
+            telemetry.addData("At Min", slides.isAtMin()); */
 
             telemetry.update();
         }
-        blueCamera.close();
+        //blueCamera.close();
     }
 }
