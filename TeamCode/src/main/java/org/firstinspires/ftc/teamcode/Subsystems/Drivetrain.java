@@ -14,7 +14,7 @@ public class Drivetrain {
         backLeftMotor = hardwareMap.dcMotor.get("backLeftMotor");
         frontRightMotor = hardwareMap.dcMotor.get("frontRightMotor");
         backRightMotor = hardwareMap.dcMotor.get("backRightMotor");
-        frontRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRightMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         frontLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightMotor.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -31,5 +31,26 @@ public class Drivetrain {
         backLeftMotor.setPower(backLeftPower);
         frontRightMotor.setPower(frontRightPower);
         backRightMotor.setPower(backRightPower);
+    }
+
+    public void SimpleAutoRun () {
+        frontLeftMotor.setPower(0.5);
+        frontRightMotor.setPower(0.5);
+        backRightMotor.setPower(0.5);
+        backLeftMotor.setPower(0.5);
+    }
+
+    public void SimpleAutoReverseRun () {
+        frontLeftMotor.setPower(-0.5);
+        frontRightMotor.setPower(-0.5);
+        backRightMotor.setPower(-0.5);
+        backLeftMotor.setPower(-0.5);
+    }
+
+    public void stop() {
+        frontLeftMotor.setPower(0);
+        frontRightMotor.setPower(0);
+        backRightMotor.setPower(0);
+        backLeftMotor.setPower(0);
     }
 }

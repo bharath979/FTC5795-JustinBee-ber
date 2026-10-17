@@ -128,10 +128,11 @@ public class BlueCamera {
 
     /**
      * The tags to aim with: only the audience-side group (38-41) or only the
-     * far-side group (42-45), never a mix. Whichever side is seen first is
-     * locked in for the rest of the OpMode (the bigger, closer one if both
-     * are seen at once); the other side is ignored from then on. Empty if
-     * none of the locked side's tags are visible.
+     * far-side group (42-45), never a mix. The current side is kept as long as
+     * any of its tags are visible, so the aim doesn't jump between clusters;
+     * it only switches when the current side is gone and the other side is in
+     * view (the bigger, closer one if both are seen at first). Empty if no
+     * blue hive tags are visible.
      */
     public List<LLResultTypes.FiducialResult> getAimDetections() {
         List<LLResultTypes.FiducialResult> audience = new ArrayList<>();
@@ -153,6 +154,10 @@ public class BlueCamera {
             }
             aimingFarSide = farArea > audienceArea;
             aimSideChosen = true;
+        } else if (aimingFarSide && far.isEmpty() && !audience.isEmpty()) {
+            aimingFarSide = false;
+        } else if (!aimingFarSide && audience.isEmpty() && !far.isEmpty()) {
+            aimingFarSide = true;
         }
         return aimingFarSide ? far : audience;
     }

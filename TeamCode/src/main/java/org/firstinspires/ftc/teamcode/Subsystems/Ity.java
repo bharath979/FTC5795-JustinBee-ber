@@ -14,14 +14,14 @@ public class Ity {
 
     DcMotor shooterMotor;
 
-    public static double verityBluePower = 1.0;
-    public static double verityYellowPower = 0.9;
+    public static double verityBluePower = 0.8;
+    public static double verityYellowPower = 0.8;
 
     public static double verityPower = verityBluePower;
 
     public void initiate(HardwareMap hardwareMap) {
         shooterMotor = hardwareMap.dcMotor.get("shooter");
-        shooterMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        shooterMotor.setDirection(DcMotorSimple.Direction.FORWARD);
     }
     public void setState(States newState) {
         state = newState;

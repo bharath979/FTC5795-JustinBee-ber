@@ -36,6 +36,8 @@ public class RedCamera {
 
     private Limelight3A limelight;
     private final Map<Integer, TagPoseFilter> poseFilters = new HashMap<>();
+    private boolean aimSideChosen;
+    private boolean aimingFarSide;
 
     public void initiate(HardwareMap hardwareMap) {
         initiate(hardwareMap, "limelight");
@@ -121,18 +123,77 @@ public class RedCamera {
     }
 
     /**
-     * Limelight tx (degrees, positive = right) of the alliance tag to aim the
-     * turret at, or null if none are visible. Uses the largest (closest) tag.
+     * The tags to aim with: only the audience-side group (34-37) or only the
+     * far-side group (30-33), never a mix. The current side is kept as long as
+     * any of its tags are visible, so the aim doesn't jump between clusters;
+     * it only switches when the current side is gone and the other side is in
+     * view (the bigger, closer one if both are seen at first). Empty if no
+     * red hive tags are visible.
+     */
+    public List<LLResultTypes.FiducialResult> getAimDetections() {
+        List<LLResultTypes.FiducialResult> audience = new ArrayList<>();
+        List<LLResultTypes.FiducialResult> far = new ArrayList<>();
+        double audienceArea = 0;
+        double farArea = 0;
+        for (LLResultTypes.FiducialResult detection : getDetections()) {
+            if (isAudienceSideTag(detection.getFiducialId())) {
+                audience.add(detection);
+                audienceArea += detection.getTargetArea();
+            } else if (isFarSideTag(detection.getFiducialId())) {
+                far.add(detection);
+                farArea += detection.getTargetArea();
+            }
+        }
+        if (!aimSideChosen) {
+            if (audience.isEmpty() && far.isEmpty()) {
+                return audience;
+            }
+            aimingFarSide = farArea > audienceArea;
+            aimSideChosen = true;
+        } else if (aimingFarSide && far.isEmpty() && !audience.isEmpty()) {
+            aimingFarSide = false;
+        } else if (!aimingFarSide && audience.isEmpty() && !far.isEmpty()) {
+            aimingFarSide = true;
+        }
+        return aimingFarSide ? far : audience;
+    }
+
+    /**
+     * Limelight tx (degrees, positive = right) to aim the turret at, or null
+     * if no red tags are visible. Averages the visible tags of one side so
+     * the turret points at the middle of that cluster.
      * Raw tx, not filtered, so the turret loop doesn't lag behind the filter.
      */
     public Double getAimTx() {
+        List<LLResultTypes.FiducialResult> group = getAimDetections();
+        if (group.isEmpty()) {
+            return null;
+        }
+        double sum = 0;
+        for (LLResultTypes.FiducialResult detection : group) {
+            sum += detection.getTargetXDegrees();
+        }
+        return sum / group.size();
+    }
+
+    /** The largest (closest) tag of the side being aimed at, or null if none are visible. */
+    public LLResultTypes.FiducialResult getAimDetection() {
         LLResultTypes.FiducialResult best = null;
-        for (LLResultTypes.FiducialResult detection : getAllianceDetections()) {
+        for (LLResultTypes.FiducialResult detection : getAimDetections()) {
             if (best == null || detection.getTargetArea() > best.getTargetArea()) {
                 best = detection;
             }
         }
-        return best == null ? null : best.getTargetXDegrees();
+        return best;
+    }
+
+    /**
+     * Limelight's timestamp for the latest camera frame. Only changes when a
+     * new frame arrives, so it tells the turret whether tx is fresh.
+     */
+    public double getFrameTimestamp() {
+        LLResult result = limelight.getLatestResult();
+        return result == null ? 0 : result.getTimestamp();
     }
 
     /** Tag pose relative to the camera, in inches and degrees (x right, y forward, z up). */
