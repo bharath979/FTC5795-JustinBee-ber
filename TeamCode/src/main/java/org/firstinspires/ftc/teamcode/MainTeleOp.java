@@ -142,7 +142,7 @@ public class MainTeleOp extends LinearOpMode {
             telemetry.addData("Hood Width", hood.getWidthPosition());
             telemetry.addData("Hood Angle", hood.getAnglePosition());
             telemetry.addData("Hood Angle Trim", hood.getAngleTrim());
-            telemetry.addData("Turret Position", turret.getPosition());
+            telemetry.addData("Turret Left / Right Servo", "%.3f / %.3f", turret.getPosition(), turret.getRightServoPosition());
             telemetry.addData("Turret Tracking", turret.isTracking());
             // Should shrink toward 0 as the turret turns; if it grows, flip DIRECTION in Turret.
             telemetry.addData("Aim Error tx (deg)", aimTx == null ? "no tag" : String.format("%.1f", aimTx));

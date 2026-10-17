@@ -18,16 +18,21 @@ public class Turret {
     // to the turret. Multiply by the gear ratio if there is one.
     private static final double TURRET_DEGREES_PER_SERVO_UNIT = 350.0;
 
-    // Fraction of the aiming error corrected on each new camera frame. Raise
-    // for faster tracking, lower if the turret swings back and forth on the tag.
-    private static final double KP = 0.25;
+    // How much of the aiming error each camera frame aims to remove. 1.0 aims
+    // straight at the tag; a bit less stops it overshooting while the camera
+    // catches up. Raise if it stops short of the tag, lower if it swings past.
+    private static final double KP = 0.8;
 
     // Ignore errors smaller than this so the turret doesn't jitter on target.
     private static final double DEADBAND_DEGREES = 1.0;
 
-    // Most the turret may turn on one camera frame, so a bad reading can't
-    // throw it far off the tag.
-    private static final double MAX_STEP_DEGREES = 6.0;
+    // Top turning speed. The turret glides toward its target at up to this
+    // speed every loop instead of jumping once per camera frame, which is
+    // what made it tick. Raise for snappier tracking, lower if it's jerky.
+    private static final double MAX_SPEED_DEGREES_PER_SECOND = 200.0;
+
+    // Loop time assumed on the first call, before a real one has been measured.
+    private static final double DEFAULT_LOOP_SECONDS = 0.02;
 
     // Flip the sign (-1.0 <-> 1.0) if the turret turns away from the tag instead of toward it.
     private static final double DIRECTION = 1.0;
@@ -73,9 +78,11 @@ public class Turret {
     private static final double RIGHT_CENTER_POSITION = 0.50;
 
     private double currentPosition;
+    private double targetPosition = CENTER_POSITION;
     private boolean tracking;
     private double lastFrameTimestamp = -1;
     private double lastSeenTime;
+    private double lastLoopTime = -1;
 
     /**
      * @param hardwareMap      the OpMode's hardwareMap
@@ -91,7 +98,7 @@ public class Turret {
     /**
      * Call every loop. Pass the Limelight tx (degrees, positive = tag is right
      * of center) of the tag cluster to aim at, or null if none is visible.
-     * With no tag the turret holds still, then returns to center.
+     * With no tag the turret holds still, then glides back to center.
      *
      * @param frameTimestamp the camera's timestamp for the frame tx came from.
      *                       The loop runs faster than the camera, so the turret
@@ -101,34 +108,46 @@ public class Turret {
     public void track(Double txDegrees, double frameTimestamp) {
         tracking = txDegrees != null;
         double now = System.nanoTime() / 1e9;
+        double dt = lastLoopTime < 0 ? DEFAULT_LOOP_SECONDS : now - lastLoopTime;
+        lastLoopTime = now;
+
         if (!tracking) {
             if (now - lastSeenTime > LOST_TAG_RETURN_SECONDS) {
-                center();
+                targetPosition = CENTER_POSITION;
             }
-            return;
+        } else {
+            lastSeenTime = now;
+            // Only a new frame moves the target; reusing an old tx would stack
+            // corrections and overshoot the tag.
+            if (frameTimestamp != lastFrameTimestamp) {
+                lastFrameTimestamp = frameTimestamp;
+                if (Math.abs(txDegrees) >= DEADBAND_DEGREES) {
+                    targetPosition = clampPosition(
+                            currentPosition + DIRECTION * KP * txDegrees / TURRET_DEGREES_PER_SERVO_UNIT);
+                }
+            }
         }
-        lastSeenTime = now;
-        if (frameTimestamp == lastFrameTimestamp) {
-            return;
-        }
-        lastFrameTimestamp = frameTimestamp;
 
-        if (Math.abs(txDegrees) < DEADBAND_DEGREES) {
-            return;
+        // Glide toward the target, no faster than the speed limit
+        double maxStep = MAX_SPEED_DEGREES_PER_SECOND * dt / TURRET_DEGREES_PER_SERVO_UNIT;
+        double step = Math.max(-maxStep, Math.min(maxStep, targetPosition - currentPosition));
+        if (step != 0) {
+            setPosition(currentPosition + step);
         }
-        // Turn part of the way toward the tag each frame; the next frame shows
-        // how much error is left, so it settles on the tag instead of overshooting.
-        double correctionDegrees = KP * txDegrees;
-        correctionDegrees = Math.max(-MAX_STEP_DEGREES, Math.min(MAX_STEP_DEGREES, correctionDegrees));
-        setPosition(currentPosition + DIRECTION * correctionDegrees / TURRET_DEGREES_PER_SERVO_UNIT);
     }
 
+    /** Snaps straight to center (used at INIT and Play). */
     public void center() {
+        targetPosition = CENTER_POSITION;
         setPosition(CENTER_POSITION);
     }
 
+    private static double clampPosition(double position) {
+        return Math.max(MIN_POSITION, Math.min(MAX_POSITION, position));
+    }
+
     public void setPosition(double position) {
-        currentPosition = Math.max(MIN_POSITION, Math.min(MAX_POSITION, position));
+        currentPosition = clampPosition(position);
         leftServo.setPosition(currentPosition);
 
         // Same turret angle on the right servo, in its own direction and range
@@ -141,6 +160,11 @@ public class Turret {
 
     public double getPosition() {
         return currentPosition;
+    }
+
+    /** Position last sent to the right (mirrored) servo. */
+    public double getRightServoPosition() {
+        return rightServo.getPosition();
     }
 
     /** Turret angle relative to the robot's front, in degrees (positive = right, same as tx). */
