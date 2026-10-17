@@ -10,7 +10,7 @@ public class Hood {
     // The hood width always sits at this position, for every ball color.
     // Servo positions must be between 0 and 1 (negatives are treated as 0). On this
     // mechanism 0 is pushed all the way out, and larger numbers pull it back in.
-    public static final double WIDTH = 0.56;
+    public static final double WIDTH = 0.22;
 
     // Angle positions. Red and blue share one angle; yellow gets its own.
     private static final double ANGLE_YELLOW = 0.51;
