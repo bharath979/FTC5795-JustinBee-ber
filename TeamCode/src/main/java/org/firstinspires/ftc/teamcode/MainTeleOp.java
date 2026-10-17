@@ -91,6 +91,15 @@ public class MainTeleOp extends LinearOpMode {
                 ColorSensor.DetectedColor color = colorSensor.getDetectedColor();
                 hood.setForColor(color);
                 ity.setVerityPowerForColor(color);
+
+            //Below is for if Color Sensor does not work
+            /* if (gamepad1.yWasPressed()) {
+                hood.setState(Hood.States.POLLEN);
+            } else if (gamepad1.bWasPressed()) {
+                hood.setState(Hood.States.NECTAR);
+            }
+            hood.update(); */
+
             } 
             if (gamepad1.dpadUpWasPressed()) {
                 hood.adjustAngle(1);
