@@ -30,9 +30,11 @@ public class Hood {
         switch (state){
             case NECTAR:
                 widthServo.setPosition(WIDTH);
+                angleServo.setPosition(0.15);
                 break;
             case POLLEN:
                 widthServo.setPosition(WIDTH_YELLOW);
+                angleServo.setPosition(0.22);
                 break;
         }
     }
@@ -107,10 +109,12 @@ public class Hood {
         switch (color) {
             case YELLOW:
                 setWidth(WIDTH_YELLOW);
+                setAngle(0.22);
                 break;
             case RED:
             case BLUE:
                 setWidth(WIDTH);
+                setAngle(0.15);
                 break;
             case NONE:
             default:
