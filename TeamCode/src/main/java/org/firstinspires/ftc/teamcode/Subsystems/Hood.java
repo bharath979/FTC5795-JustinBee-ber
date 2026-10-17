@@ -16,6 +16,27 @@ public class Hood {
     // Furthest the width servo may turn: past this the ball is over-compressed.
     public static final double WIDTH_MAX = 0.61;
 
+    private Hood.States state = Hood.States.NECTAR;
+
+    public enum States {
+        POLLEN,
+        NECTAR,
+
+    }
+
+    public void setState(Hood.States newState) {state = newState;}
+
+    public void update(){
+        switch (state){
+            case NECTAR:
+                widthServo.setPosition(WIDTH);
+                break;
+            case POLLEN:
+                widthServo.setPosition(WIDTH_YELLOW);
+                break;
+        }
+    }
+
     // Angle the hood goes to when the opmode starts, until the Limelight sees a tag and
     // takes over. 1.0 is all the way up, 0.0 is all the way down.
     public static final double ANGLE_START = 0.22;
