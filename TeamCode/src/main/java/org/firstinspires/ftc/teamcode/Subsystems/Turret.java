@@ -18,50 +18,46 @@ public class Turret {
     // to the turret. Multiply by the gear ratio if there is one.
     private static final double TURRET_DEGREES_PER_SERVO_UNIT = 350.0;
 
-    // Fraction of the aiming error corrected each loop. Raise for faster
-    // tracking, lower if the turret oscillates around the tag.
-    private static final double KP = 0.20;
+    // Fraction of the aiming error corrected on each new camera frame. Raise
+    // for faster tracking, lower if the turret swings back and forth on the tag.
+    private static final double KP = 0.25;
 
     // Ignore errors smaller than this so the turret doesn't jitter on target.
     private static final double DEADBAND_DEGREES = 1.0;
 
-    // Top speed the turret is allowed to turn while tracking. Lower this
-    // first if the turret moves too fast or whips past the tag.
-    private static final double MAX_SPEED_DEGREES_PER_SECOND = 360.0;
+    // Most the turret may turn on one camera frame, so a bad reading can't
+    // throw it far off the tag.
+    private static final double MAX_STEP_DEGREES = 6.0;
 
-    // How much of the tag's measured speed the turret matches (0 = none,
-    // 1 = all of it). Lower if the turret overshoots while the robot moves.
-    private static final double FEEDFORWARD_GAIN = 0.8;
+    // Flip the sign (-1.0 <-> 1.0) if the turret turns away from the tag instead of toward it.
+    private static final double DIRECTION = 1.0;
 
-    // Frame time assumed for the speed limit before two frames have been timed.
-    private static final double DEFAULT_FRAME_SECONDS = 0.03;
+    // With no tag in view for this long, the turret goes back to center. Until
+    // then it holds still, so a blurry or dropped frame doesn't swing it away.
+    private static final double LOST_TAG_RETURN_SECONDS = 1.5;
 
-    // Camera + servo delay to aim ahead by while the robot is moving. Raise if
-    // the turret trails behind the tag at speed, lower if it leads past it.
-    private static final double LATENCY_SECONDS = 0.05;
-
-    // How quickly the tag-speed estimate follows new readings (0-1). Lower is
-    // smoother but slower to react to the robot changing speed.
-    private static final double RATE_SMOOTHING = 0.4;
-
-    // Tag speeds below this are treated as standing still, so camera noise
-    // doesn't make the turret twitch when the robot is parked.
-    private static final double MIN_RATE_DEGREES_PER_SECOND = 5.0;
-
-    // A gap between frames longer than this means the speed estimate is stale.
-    private static final double MAX_FRAME_GAP_SECONDS = 0.25;
-
-    // Flip to -1 if the turret turns away from the tag instead of toward it.
-    private static final double DIRECTION = -1.0;
-
-    // With no tag in view for this long, the turret goes back to center. The
-    // wait stops a single dropped frame from yanking it off the tag.
-    private static final double LOST_TAG_RETURN_SECONDS = 0.5;
-
-    // Servo limits so the turret never twists into wires or the frame.
-    private static final double MIN_POSITION = 0.10;
-    private static final double MAX_POSITION = 0.90;
+    // Servo position where the turret (and Limelight) points straight forward.
     private static final double CENTER_POSITION = 0.50;
+
+    // How far the turret may turn each way from center, seen from above. It
+    // hits a hard stop about 30deg clockwise, so this stays a little short of
+    // that to keep the servos from straining against it. Counterclockwise has
+    // 350deg+ of room, but the servo only reaches 175deg past center
+    // (0.5 x 350deg), so that side is limited by the servo, not the turret.
+    private static final double CLOCKWISE_LIMIT_DEGREES = 25.0;
+    private static final double COUNTERCLOCKWISE_LIMIT_DEGREES = 170.0;
+
+    // Servo positions for those limits. Clockwise is the same way as positive
+    // tx (tag to the right), so DIRECTION also says which way the servo turns
+    // clockwise. Flipping DIRECTION keeps the short limit on the clockwise side.
+    private static final double CLOCKWISE_POSITION =
+            CENTER_POSITION + DIRECTION * CLOCKWISE_LIMIT_DEGREES / TURRET_DEGREES_PER_SERVO_UNIT;
+    private static final double COUNTERCLOCKWISE_POSITION =
+            CENTER_POSITION - DIRECTION * COUNTERCLOCKWISE_LIMIT_DEGREES / TURRET_DEGREES_PER_SERVO_UNIT;
+    private static final double MIN_POSITION =
+            Math.max(0.0, Math.min(CLOCKWISE_POSITION, COUNTERCLOCKWISE_POSITION));
+    private static final double MAX_POSITION =
+            Math.min(1.0, Math.max(CLOCKWISE_POSITION, COUNTERCLOCKWISE_POSITION));
 
     // Whether the right servo runs mirrored to the left one. If the servos
     // fight each other (right one strains or jitters off center), flip this.
@@ -79,11 +75,7 @@ public class Turret {
     private double currentPosition;
     private boolean tracking;
     private double lastFrameTimestamp = -1;
-    private double lastFrameTime;
     private double lastSeenTime;
-    private double lastBearing;
-    private double bearingRate;
-    private boolean hasLastBearing;
 
     /**
      * @param hardwareMap      the OpMode's hardwareMap
@@ -98,8 +90,8 @@ public class Turret {
 
     /**
      * Call every loop. Pass the Limelight tx (degrees, positive = tag is right
-     * of center) of the tag to aim at, or null if no tag is visible. With no
-     * tag the turret holds briefly, then returns to center.
+     * of center) of the tag cluster to aim at, or null if none is visible.
+     * With no tag the turret holds still, then returns to center.
      *
      * @param frameTimestamp the camera's timestamp for the frame tx came from.
      *                       The loop runs faster than the camera, so the turret
@@ -110,9 +102,6 @@ public class Turret {
         tracking = txDegrees != null;
         double now = System.nanoTime() / 1e9;
         if (!tracking) {
-            // Lost the tag: forget its speed so a stale value isn't used when it comes back
-            hasLastBearing = false;
-            bearingRate = 0;
             if (now - lastSeenTime > LOST_TAG_RETURN_SECONDS) {
                 center();
             }
@@ -124,41 +113,14 @@ public class Turret {
         }
         lastFrameTimestamp = frameTimestamp;
 
-        // Where the tag is relative to the robot's front, and how fast that is
-        // changing as the robot drives and spins
-        double bearing = getAngleDegrees() + txDegrees;
-        double dt = now - lastFrameTime;
-        if (hasLastBearing && dt > 0 && dt < MAX_FRAME_GAP_SECONDS) {
-            double rate = (bearing - lastBearing) / dt;
-            bearingRate += RATE_SMOOTHING * (rate - bearingRate);
-        } else {
-            bearingRate = 0;
-            dt = 0;
+        if (Math.abs(txDegrees) < DEADBAND_DEGREES) {
+            return;
         }
-        lastBearing = bearing;
-        lastFrameTime = now;
-        hasLastBearing = true;
-
-        double rate = Math.abs(bearingRate) < MIN_RATE_DEGREES_PER_SECOND ? 0 : bearingRate;
-
-        // Aim where the tag will be once the camera delay has passed
-        double error = txDegrees + rate * LATENCY_SECONDS;
-        if (Math.abs(error) < DEADBAND_DEGREES) {
-            error = 0;
-        }
-        // Chase the error, and also keep turning at the tag's speed so the
-        // turret doesn't fall behind while the robot is moving
-        double correctionDegrees = KP * error + FEEDFORWARD_GAIN * rate * dt;
-
-        // Never turn faster than the speed limit, however big the error is
-        double maxStep = MAX_SPEED_DEGREES_PER_SECOND * (dt > 0 ? dt : DEFAULT_FRAME_SECONDS);
-        correctionDegrees = Math.max(-maxStep, Math.min(maxStep, correctionDegrees));
+        // Turn part of the way toward the tag each frame; the next frame shows
+        // how much error is left, so it settles on the tag instead of overshooting.
+        double correctionDegrees = KP * txDegrees;
+        correctionDegrees = Math.max(-MAX_STEP_DEGREES, Math.min(MAX_STEP_DEGREES, correctionDegrees));
         setPosition(currentPosition + DIRECTION * correctionDegrees / TURRET_DEGREES_PER_SERVO_UNIT);
-    }
-
-    /** How fast the tag is sweeping past the robot, in degrees per second (positive = to the right). */
-    public double getBearingRate() {
-        return bearingRate;
     }
 
     public void center() {

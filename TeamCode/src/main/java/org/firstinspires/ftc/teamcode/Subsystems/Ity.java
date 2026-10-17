@@ -21,7 +21,7 @@ public class Ity {
 
     public void initiate(HardwareMap hardwareMap) {
         shooterMotor = hardwareMap.dcMotor.get("shooter");
-        shooterMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        shooterMotor.setDirection(DcMotorSimple.Direction.FORWARD);
     }
     public void setState(States newState) {
         state = newState;

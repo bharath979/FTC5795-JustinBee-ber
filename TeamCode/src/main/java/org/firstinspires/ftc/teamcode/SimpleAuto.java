@@ -17,11 +17,22 @@ public class SimpleAuto extends LinearOpMode {
         waitForStart();
         timer.reset();
 
-        while (opModeIsActive() && timer.seconds() < 3) {
+        // Every loop checks opModeIsActive() so pressing Stop halts the robot right away.
+        // Forward for 1 second
+        while (opModeIsActive() && timer.seconds() < 1) {
             drivetrain.SimpleAutoRun();
-
         }
         drivetrain.stop();
 
+        // Wait until 5 seconds
+        while (opModeIsActive() && timer.seconds() < 5) {
+            idle();
+        }
+
+        // Backward from 5 to 7 seconds
+        while (opModeIsActive() && timer.seconds() < 7) {
+            drivetrain.SimpleAutoReverseRun();
+        }
+        drivetrain.stop();
     }
 }

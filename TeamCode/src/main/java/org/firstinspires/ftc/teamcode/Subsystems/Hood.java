@@ -13,13 +13,12 @@ public class Hood {
     public static final double WIDTH = 0.56;
     // Hood width for yellow balls.
     public static final double WIDTH_YELLOW = 0.22;
+    // Furthest the width servo may turn: past this the ball is over-compressed.
+    public static final double WIDTH_MAX = 0.61;
 
-    // Angle positions. Red and blue share one angle; yellow gets its own.
-    private static final double ANGLE_YELLOW = 0.51;
-    // Angle the hood goes to when the opmode starts. 1.0 is all the way up, 0.0 is all the way down.
-    public static final double ANGLE_START = 0.56;
-    // The angle used for both red and blue balls.
-    public static final double ANGLE_RED_BLUE = 0.51;
+    // Angle the hood goes to when the opmode starts, until the Limelight sees a tag and
+    // takes over. 1.0 is all the way up, 0.0 is all the way down.
+    public static final double ANGLE_START = 0.22;
 
     // How far the angle servo moves per loop while a dpad button is held.
     private static final double ANGLE_MANUAL_STEP = 0.01;
@@ -58,10 +57,14 @@ public class Hood {
         angleServo.setPosition(currentAnglePosition);
     }
 
-    /** Moves only the width servo to the given position, clamped to the servo range. */
+    /** Moves only the width servo to the given position, clamped between 0 and WIDTH_MAX. */
     public void setWidth(double widthPosition) {
-        currentWidthPosition = Math.max(0.0, Math.min(1.0, widthPosition));
+        currentWidthPosition = clampWidth(widthPosition);
         widthServo.setPosition(currentWidthPosition);
+    }
+
+    private static double clampWidth(double widthPosition) {
+        return Math.max(0.0, Math.min(WIDTH_MAX, widthPosition));
     }
 
     /** Moves the width servo to WIDTH (no movement if it is already there). */
@@ -76,37 +79,29 @@ public class Hood {
     }
 
     /**
-     * Sets the hood width and angle for the detected color: yellow uses WIDTH_YELLOW,
-     * red and blue use WIDTH.
+     * Sets the hood width for the detected color: yellow uses WIDTH_YELLOW, red and blue use
+     * WIDTH. The angle is left alone; only the Limelight distance (plus dpad trim) sets it.
      */
     public void setForColor(ColorSensor.DetectedColor color) {
-        double width;
-        double angle;
-
         switch (color) {
             case YELLOW:
-                width = WIDTH_YELLOW;
-                angle = ANGLE_YELLOW;
+                setWidth(WIDTH_YELLOW);
                 break;
             case RED:
             case BLUE:
-                width = WIDTH;
-                angle = ANGLE_RED_BLUE;
+                setWidth(WIDTH);
                 break;
             case NONE:
             default:
-                return;
+                break;
         }
-
-        setWidth(width);
-        setAngle(angle);
     }
 
     /** Directly set raw servo positions, bypassing the color lookup table. */
     public void setPositions(double widthPosition, double anglePosition) {
-        currentWidthPosition = widthPosition;
+        currentWidthPosition = clampWidth(widthPosition);
         currentAnglePosition = anglePosition;
-        widthServo.setPosition(widthPosition);
+        widthServo.setPosition(currentWidthPosition);
         angleServo.setPosition(anglePosition);
     }
 
@@ -155,7 +150,7 @@ public class Hood {
      * color puts it back at WIDTH.
      */
     public void adjustYellowWidth(int direction) {
-        yellowWidth = Math.max(0.0, Math.min(1.0, yellowWidth + direction * WIDTH_MANUAL_STEP));
+        yellowWidth = clampWidth(yellowWidth + direction * WIDTH_MANUAL_STEP);
         currentWidthPosition = yellowWidth;
         widthServo.setPosition(yellowWidth);
     }

@@ -17,6 +17,7 @@ public class Intake {
     public static double outTransferMotorPower = 0.5;
 
     public void initiate(HardwareMap hardwaremap) {
+
         intakeMotor = hardwaremap.dcMotor.get("intakeMotor");
         transferMotor = hardwaremap.dcMotor.get("transferMotor");
     }

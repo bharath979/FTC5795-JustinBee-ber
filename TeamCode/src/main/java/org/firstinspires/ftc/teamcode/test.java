@@ -21,7 +21,9 @@ public class test extends LinearOpMode {
         ity.setVerityPowerForColor(ColorSensor.DetectedColor.BLUE);
 
         ColorSensor colorSensor = new ColorSensor(hardwareMap, "ColorSensor");
-        Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
+        // The config names are crossed on the robot: "HoodAngle" is plugged into the width servo
+        // and "HoodWidth" into the angle servo, so they are passed in swapped here.
+        Hood hood = new Hood(hardwareMap, "HoodAngle", "HoodWidth");
 
         Turret turret = new Turret(hardwareMap, "TurretLeft", "TurretRight");
 
@@ -85,7 +87,6 @@ public class test extends LinearOpMode {
             telemetry.addData("Hood Width", hood.getWidthPosition());
             telemetry.addData("Hood Angle", hood.getAnglePosition());
             telemetry.addData("Yellow Width", hood.getYellowWidth());
-            telemetry.addData("Tag Speed (deg/s)", turret.getBearingRate());
             telemetry.addData("Turret Position", turret.getPosition());
             telemetry.addData("Turret Tracking", turret.isTracking());
             telemetry.addData("Turret At Limit", turret.isAtLimit());
