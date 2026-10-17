@@ -31,10 +31,12 @@ public class Auto extends LinearOpMode {
         Drivetrain drivetrain = new Drivetrain();
         drivetrain.initiate(hardwareMap);
 
-        // Starts centered, so the Limelight faces the same way as the robot: at the blue hive
         Turret turret = new Turret(hardwareMap, "TurretLeft", "TurretRight");
 
         waitForStart();
+
+        // Starts centered, so the Limelight faces the same way as the robot: at the blue hive
+        turret.center();
 
         while (opModeIsActive()) {
             camera.update(telemetry);

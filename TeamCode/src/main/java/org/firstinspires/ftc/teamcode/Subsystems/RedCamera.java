@@ -27,6 +27,15 @@ public class RedCamera {
     private static final double ANGLE_PROCESS_NOISE = 0.05;
     private static final double ANGLE_MEASUREMENT_NOISE = 4.0;
 
+    // Range drives the hood angle, so its filter follows new readings much
+    // faster (about 40% of the way each update instead of about 10%).
+    // Lower if the hood jitters, raise if it lags behind the robot moving.
+    private static final double RANGE_PROCESS_NOISE = 0.5;
+
+    // A tag unseen for longer than this starts its filter fresh, so the hood
+    // jumps to the real distance instead of crawling from an old one.
+    private static final double FILTER_STALE_SECONDS = 0.5;
+
     // Limelight pipeline index set up for AprilTags (36h11) in the Limelight web UI
     private static final int APRILTAG_PIPELINE = 0;
 
@@ -232,10 +241,21 @@ public class RedCamera {
         final KalmanFilter y = new KalmanFilter(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
         final KalmanFilter z = new KalmanFilter(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
         final KalmanFilter yaw = new KalmanFilter(ANGLE_PROCESS_NOISE, ANGLE_MEASUREMENT_NOISE);
-        final KalmanFilter range = new KalmanFilter(POSITION_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
+        final KalmanFilter range = new KalmanFilter(RANGE_PROCESS_NOISE, POSITION_MEASUREMENT_NOISE);
         final KalmanFilter bearing = new KalmanFilter(ANGLE_PROCESS_NOISE, ANGLE_MEASUREMENT_NOISE);
+        double lastUpdateTime = -1;
 
         TagPose update(TagPose pose) {
+            double now = System.nanoTime() / 1e9;
+            if (lastUpdateTime >= 0 && now - lastUpdateTime > FILTER_STALE_SECONDS) {
+                x.reset();
+                y.reset();
+                z.reset();
+                yaw.reset();
+                range.reset();
+                bearing.reset();
+            }
+            lastUpdateTime = now;
             return new TagPose(
                     x.update(pose.x),
                     y.update(pose.y),

@@ -41,7 +41,7 @@ public class MainTeleOp extends LinearOpMode {
         // and "HoodWidth" into the angle servo, so they are passed in swapped here.
         Hood hood = new Hood(hardwareMap, "HoodAngle", "HoodWidth");
 
-        // Constructor centers the turret so both servos are powered and holding from INIT.
+        // Servos stay still during INIT; the turret centers when Play is pressed.
         Turret turret = new Turret(hardwareMap, "TurretLeft", "TurretRight");
 
         Ity ity = new Ity();

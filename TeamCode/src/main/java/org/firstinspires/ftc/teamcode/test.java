@@ -31,14 +31,11 @@ public class test extends LinearOpMode {
 
         Intake intake = new Intake();
         intake.initiate(hardwareMap);
-        // On INIT, put the hood width at its fixed position (no movement if it is already there).
-        hood.goToWidth();
-
         waitForStart();
 
-        // Put the hood at its starting position (fixed width, start angle).
+        // Put the hood at its starting position (fixed width, start angle) and center the turret.
         hood.goToStart();
-        ;
+        turret.center();
 
         while (opModeIsActive()) {
 

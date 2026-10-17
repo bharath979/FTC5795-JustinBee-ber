@@ -29,7 +29,7 @@ public class Turret {
     // Top turning speed. The turret glides toward its target at up to this
     // speed every loop instead of jumping once per camera frame, which is
     // what made it tick. Raise for snappier tracking, lower if it's jerky.
-    private static final double MAX_SPEED_DEGREES_PER_SECOND = 200.0;
+    private static final double MAX_SPEED_DEGREES_PER_SECOND = 450.0;
 
     // Loop time assumed on the first call, before a real one has been measured.
     private static final double DEFAULT_LOOP_SECONDS = 0.02;
@@ -92,7 +92,9 @@ public class Turret {
     public Turret(HardwareMap hardwareMap, String leftServoName, String rightServoName) {
         leftServo = hardwareMap.get(Servo.class, leftServoName);
         rightServo = hardwareMap.get(Servo.class, rightServoName);
-        setPosition(CENTER_POSITION);
+        // No servo command here, so nothing moves during INIT. Call center()
+        // after waitForStart() to power the servos and point forward.
+        currentPosition = CENTER_POSITION;
     }
 
     /**

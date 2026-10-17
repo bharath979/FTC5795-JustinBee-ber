@@ -3,6 +3,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
+import org.firstinspires.ftc.teamcode.Subsystems.Gate;
+import org.firstinspires.ftc.teamcode.Subsystems.Hood;
 import org.firstinspires.ftc.teamcode.Subsystems.Intake;
 import org.firstinspires.ftc.teamcode.Subsystems.Ity;
 
@@ -20,6 +22,11 @@ public class SimpleAuto extends LinearOpMode {
         Intake intake = new Intake();
         intake.initiate(hardwareMap);
 
+        Gate gate = new Gate();
+        gate.initiate(hardwareMap);
+
+        Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
+
         ElapsedTime timer = new ElapsedTime();
 
         waitForStart();
@@ -30,26 +37,41 @@ public class SimpleAuto extends LinearOpMode {
         while (opModeIsActive()) {
 
             while (timer.seconds() < 5) {
+                gate.setState(Gate.States.OPEN);
                 ity.setState(Ity.States.VERITY);
-                while (timer.seconds() > 2 && timer.seconds() < 5) {
+                hood.setState(Hood.States.POLLEN);
+                ity.update();
+                hood.update();
+                while (timer.seconds() > 1 && timer.seconds() < 5) {
                     intake.setState(Intake.States.IN);
+                    intake.update();
                 }
+            }
+            ity.setState(Ity.States.STOP);
+            intake.setState(Intake.States.STOP);
+            ity.update();
+            intake.update();
 
-                while (timer.seconds() >5 && timer.seconds() < 6) {
+
+            while (timer.seconds() >5 && timer.seconds() < 6) {
                     drivetrain.SimpleAutoRun();
-                }
+            }
                 // Wait until 5 seconds
-                while (timer.seconds() > 6 && timer.seconds() < 7) {
+            while (timer.seconds() > 6 && timer.seconds() < 7.5) {
                     drivetrain.run(-0.5, 0, 0);
-                }
+            }
 
-                while (timer.seconds() > 7 && timer.seconds() < 11) {
+            while (timer.seconds() > 7.5 && timer.seconds() < 10) {
                     drivetrain.SimpleAutoRun();
-                }
-                drivetrain.stop();
+            }
+
+
+            while (timer.seconds() > 7 && timer.seconds() < 8) {
+                    drivetrain.run(-0.5, 0, 0);
+            }
+            drivetrain.stop();
             }
 
         }
-}
 }
 
