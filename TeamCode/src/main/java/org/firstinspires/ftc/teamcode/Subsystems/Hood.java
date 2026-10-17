@@ -7,21 +7,34 @@ public class Hood {
     private final Servo widthServo;
     private final Servo angleServo;
 
-    // The hood width always sits at this position, for every ball color.
+    // Hood width for red and blue balls (also the starting width).
     // Servo positions must be between 0 and 1 (negatives are treated as 0). On this
     // mechanism 0 is pushed all the way out, and larger numbers pull it back in.
     public static final double WIDTH = 0.56;
+    // Hood width for yellow balls.
+    public static final double WIDTH_YELLOW = 0.22;
 
     // Angle positions. Red and blue share one angle; yellow gets its own.
     private static final double ANGLE_YELLOW = 0.51;
     // Angle the hood goes to when the opmode starts. 1.0 is all the way up, 0.0 is all the way down.
-    public static final double ANGLE_START = 0.51;
+    public static final double ANGLE_START = 0.56;
     // The angle used for both red and blue balls.
     public static final double ANGLE_RED_BLUE = 0.51;
 
     // How far the angle servo moves per loop while a dpad button is held.
     private static final double ANGLE_MANUAL_STEP = 0.01;
     private static final double WIDTH_MANUAL_STEP = 0.01;
+
+    // Distance-to-angle table for Limelight auto aim. Distance is the floor distance from the
+    // Limelight to the AprilTag in inches; angle is the angle servo position to use there.
+    // Farther away = hood higher, closer = hood lower. Between points it blends smoothly;
+    // past either end it holds the end value. Placeholders: tune by driving to each distance,
+    // dpad up/down until shots land, and writing the angle down here.
+    private static final double[] AUTO_DISTANCES = {24, 48, 72, 96, 120};
+    private static final double[] AUTO_ANGLES    = {0.40, 0.47, 0.53, 0.59, 0.65};
+
+    // Extra amount added on top of the distance table; dpad up/down changes it during a match.
+    private double angleTrim = 0.0;
 
     // Manual width nudge value; starts at WIDTH and is only changed by adjustYellowWidth().
     private double yellowWidth = WIDTH;
@@ -63,18 +76,21 @@ public class Hood {
     }
 
     /**
-     * Sets the hood angle for the detected color. The width is the same for every color, so it
-     * is just held at WIDTH.
+     * Sets the hood width and angle for the detected color: yellow uses WIDTH_YELLOW,
+     * red and blue use WIDTH.
      */
     public void setForColor(ColorSensor.DetectedColor color) {
+        double width;
         double angle;
 
         switch (color) {
             case YELLOW:
+                width = WIDTH_YELLOW;
                 angle = ANGLE_YELLOW;
                 break;
             case RED:
             case BLUE:
+                width = WIDTH;
                 angle = ANGLE_RED_BLUE;
                 break;
             case NONE:
@@ -82,7 +98,7 @@ public class Hood {
                 return;
         }
 
-        goToWidth();
+        setWidth(width);
         setAngle(angle);
     }
 
@@ -94,8 +110,42 @@ public class Hood {
         angleServo.setPosition(anglePosition);
     }
 
-    /** Nudges the hood angle up (+1) or down (-1) by one manual step, clamped to the servo range. */
+    /**
+     * Sets the hood angle from the Limelight distance to the tag (inches): raises the hood as
+     * the robot backs up and lowers it as the robot drives closer. Adds the dpad trim on top.
+     */
+    public void setAngleForDistance(double distanceInches) {
+        setAngle(angleForDistance(distanceInches) + angleTrim);
+    }
+
+    /** Looks up the hood angle for a distance in AUTO_DISTANCES / AUTO_ANGLES, blending between points. */
+    public static double angleForDistance(double distanceInches) {
+        int last = AUTO_DISTANCES.length - 1;
+        if (distanceInches <= AUTO_DISTANCES[0]) {
+            return AUTO_ANGLES[0];
+        }
+        if (distanceInches >= AUTO_DISTANCES[last]) {
+            return AUTO_ANGLES[last];
+        }
+        for (int i = 0; i < last; i++) {
+            if (distanceInches <= AUTO_DISTANCES[i + 1]) {
+                double t = (distanceInches - AUTO_DISTANCES[i]) / (AUTO_DISTANCES[i + 1] - AUTO_DISTANCES[i]);
+                return AUTO_ANGLES[i] + t * (AUTO_ANGLES[i + 1] - AUTO_ANGLES[i]);
+            }
+        }
+        return AUTO_ANGLES[last];
+    }
+
+    public double getAngleTrim() {
+        return angleTrim;
+    }
+
+    /**
+     * Nudges the hood angle up (+1) or down (-1) by one manual step, clamped to the servo range.
+     * Also shifts the auto-aim trim so the nudge sticks while the Limelight is controlling the angle.
+     */
     public void adjustAngle(int direction) {
+        angleTrim += direction * ANGLE_MANUAL_STEP;
         currentAnglePosition = Math.max(0.0, Math.min(1.0, currentAnglePosition + direction * ANGLE_MANUAL_STEP));
         angleServo.setPosition(currentAnglePosition);
     }

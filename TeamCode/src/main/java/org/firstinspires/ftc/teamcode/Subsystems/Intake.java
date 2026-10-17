@@ -11,10 +11,10 @@ public class Intake {
     DcMotor intakeMotor;
     DcMotor transferMotor;
 
-    public static double intakeMotorPower = 0.8;
-    public static double transferMotorPower = 0.8;
-    public static double outIntakeMotorPower = -0.5;
-    public static double outTransferMotorPower = -0.5;
+    public static double intakeMotorPower = -0.8;
+    public static double transferMotorPower = -0.8;
+    public static double outIntakeMotorPower = 0.5;
+    public static double outTransferMotorPower = 0.5;
 
     public void initiate(HardwareMap hardwaremap) {
         intakeMotor = hardwaremap.dcMotor.get("intakeMotor");

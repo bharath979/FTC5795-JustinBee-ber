@@ -14,8 +14,8 @@ public class Ity {
 
     DcMotor shooterMotor;
 
-    public static double verityBluePower = 1.0;
-    public static double verityYellowPower = 0.9;
+    public static double verityBluePower = 0.8;
+    public static double verityYellowPower = 0.8;
 
     public static double verityPower = verityBluePower;
 
