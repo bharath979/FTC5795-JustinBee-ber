@@ -25,7 +25,9 @@ public class SimpleAuto extends LinearOpMode {
         Gate gate = new Gate();
         gate.initiate(hardwareMap);
 
-        Hood hood = new Hood(hardwareMap, "HoodWidth", "HoodAngle");
+        // The config names are crossed on the robot: "HoodAngle" is plugged into the width servo
+        // and "HoodWidth" into the angle servo, so they are passed in swapped here.
+        Hood hood = new Hood(hardwareMap, "HoodAngle", "HoodWidth");
 
         ElapsedTime timer = new ElapsedTime();
 
@@ -33,45 +35,48 @@ public class SimpleAuto extends LinearOpMode {
         timer.reset();
 
         // Every loop checks opModeIsActive() so pressing Stop halts the robot right away.
-        // Forward for 1 second
-        while (opModeIsActive()) {
 
-            while (timer.seconds() < 5) {
-                gate.setState(Gate.States.OPEN);
-                ity.setState(Ity.States.VERITY);
-                hood.setState(Hood.States.POLLEN);
-                ity.update();
-                hood.update();
-                while (timer.seconds() > 1 && timer.seconds() < 5) {
-                    intake.setState(Intake.States.IN);
-                    intake.update();
-                }
+        // 0-5 s: open the gate, spin up the shooter, set the hood. Intake feeds from 2 s.
+        gate.setState(Gate.States.OPEN);
+        ity.setState(Ity.States.VERITY);
+        hood.setState(Hood.States.POLLEN);
+        hood.update();
+        while (opModeIsActive() && timer.seconds() < 5) {
+            if (timer.seconds() > 2) {
+                intake.setState(Intake.States.IN);
             }
-            ity.setState(Ity.States.STOP);
-            intake.setState(Intake.States.STOP);
             ity.update();
             intake.update();
-
-
-            while (timer.seconds() >5 && timer.seconds() < 6) {
-                    drivetrain.SimpleAutoRun();
-            }
-                // Wait until 5 seconds
-            while (timer.seconds() > 6 && timer.seconds() < 7.5) {
-                    drivetrain.run(-0.5, 0, 0);
-            }
-
-            while (timer.seconds() > 7.5 && timer.seconds() < 10) {
-                    drivetrain.SimpleAutoRun();
-            }
-
-
-            while (timer.seconds() > 7 && timer.seconds() < 8) {
-                    drivetrain.run(-0.5, 0, 0);
-            }
-            drivetrain.stop();
-            }
-
         }
-}
 
+        // Stop shooting. update() is what actually sends the new power to the motors.
+        ity.setState(Ity.States.STOP);
+        intake.setState(Intake.States.STOP);
+        hood.setState(Hood.States.NECTAR);
+        ity.update();
+        intake.update();
+        hood.update();
+
+        // 5-6 s: forward
+        while (opModeIsActive() && timer.seconds() < 6) {
+            drivetrain.SimpleAutoRun();
+        }
+
+        // 6-7.5 s: strafe left
+        while (opModeIsActive() && timer.seconds() < 7.5) {
+            drivetrain.run(-0.5, 0, 0);
+        }
+
+        // 7.5-9 s: forward
+        while (opModeIsActive() && timer.seconds() < 9) {
+            drivetrain.SimpleAutoRun();
+        }
+
+        // 9-10 s: strafe left
+        while (opModeIsActive() && timer.seconds() < 10) {
+            drivetrain.run(-0.5, 0, 0);
+        }
+
+        drivetrain.stop();
+    }
+}

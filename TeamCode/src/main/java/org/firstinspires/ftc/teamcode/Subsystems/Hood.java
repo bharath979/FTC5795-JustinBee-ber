@@ -34,7 +34,7 @@ public class Hood {
                 break;
             case POLLEN:
                 widthServo.setPosition(WIDTH_YELLOW);
-                angleServo.setPosition(0.22);
+                angleServo.setPosition(0.19);
                 break;
         }
     }
