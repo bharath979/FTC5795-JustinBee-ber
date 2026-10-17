@@ -35,15 +35,15 @@ public class SimpleAuto extends LinearOpMode {
                     intake.setState(Intake.States.IN);
                 }
 
-                while (timer.seconds() < 6) {
+                while (timer.seconds() >5 && timer.seconds() < 6) {
                     drivetrain.SimpleAutoRun();
                 }
                 // Wait until 5 seconds
-                while (timer.seconds() < 7) {
+                while (timer.seconds() > 6 && timer.seconds() < 7) {
                     drivetrain.run(-0.5, 0, 0);
                 }
 
-                while (timer.seconds() < 9) {
+                while (timer.seconds() > 7 && timer.seconds() < 11) {
                     drivetrain.SimpleAutoRun();
                 }
                 drivetrain.stop();

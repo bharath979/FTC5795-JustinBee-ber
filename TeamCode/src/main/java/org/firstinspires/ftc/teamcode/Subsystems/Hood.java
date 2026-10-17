@@ -44,7 +44,7 @@ public class Hood {
     public static final double ANGLE_START = 0.22;
 
     // How far the angle servo moves per loop while a dpad button is held.
-    private static final double ANGLE_MANUAL_STEP = 0.01;
+    private static final double ANGLE_MANUAL_STEP = 0.05;
     private static final double WIDTH_MANUAL_STEP = 0.01;
 
     // Distance-to-angle table for Limelight auto aim. Distance is the floor distance from the
