@@ -38,7 +38,7 @@ public class OdometryTest extends LinearOpMode {
     static final boolean Y_POD_REVERSED = false;
 
     // Drive motor names / directions (edit to match your robot)
-    static final String FL = "frontLeft", FR = "frontRight", BL = "backLeft", BR = "backRight";
+    static final String FL = "frontLeftMotor", FR = "frontRightMotor", BL = "backLeftMotor", BR = "backRightMotor";
     // ====================================================================
 
     /** Small wrapper so you can reuse this in Auto as well. */
