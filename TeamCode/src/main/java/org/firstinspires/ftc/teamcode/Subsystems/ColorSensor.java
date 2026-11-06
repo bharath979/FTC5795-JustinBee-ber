@@ -77,8 +77,8 @@ public class ColorSensor {
      * @param sensorName  name configured in the Robot Controller config file
      *                    (configure it as "REV Color Sensor V3")
      */
-    public ColorSensor(HardwareMap hardwareMap, String sensorName) {
-        colorSensor = hardwareMap.get(NormalizedColorSensor.class, sensorName);
+    public ColorSensor(HardwareMap hardwareMap) {
+        colorSensor = hardwareMap.colorSensor, sensorName);
         colorSensor.setGain(GAIN);
 
         // The SDK leaves the V3 taking a new color and distance sample only
