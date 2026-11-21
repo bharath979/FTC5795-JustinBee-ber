@@ -177,6 +177,14 @@ public class BlueCamera {
     }
 
     /**
+     * True if the camera is locked onto the far-side tag group, false for the
+     * audience side. Updated by getAimDetections() / getAimTx().
+     */
+    public boolean isAimingFarSide() {
+        return aimingFarSide;
+    }
+
+    /**
      * Limelight tx (degrees, positive = right) to aim the turret at, or null
      * if no blue tags are visible. Averages the visible tags of one side so
      * the turret points at the middle of that group.
@@ -212,6 +220,32 @@ public class BlueCamera {
     public double getFrameTimestamp() {
         LLResult result = limelight.getLatestResult();
         return result == null ? 0 : result.getTimestamp();
+    }
+
+    /**
+     * Middle of the tag group being aimed at, relative to the camera (inches,
+     * x right, y forward along the floor), or null if none are visible.
+     * Unfiltered; GoalTracker does its own smoothing on the field position.
+     */
+    public TagPose getAimCenterPose() {
+        double sumX = 0, sumY = 0, sumZ = 0;
+        int count = 0;
+        for (LLResultTypes.FiducialResult detection : getAimDetections()) {
+            TagPose pose = getTagPose(detection);
+            if (pose == null) {
+                continue;
+            }
+            sumX += pose.x;
+            sumY += pose.y;
+            sumZ += pose.z;
+            count++;
+        }
+        if (count == 0) {
+            return null;
+        }
+        double x = sumX / count;
+        double y = sumY / count;
+        return new TagPose(x, y, sumZ / count, 0, Math.hypot(x, y), Math.toDegrees(Math.atan2(-x, y)));
     }
 
     /** Tag pose relative to the camera, in inches and degrees (x right, y forward, z up). */

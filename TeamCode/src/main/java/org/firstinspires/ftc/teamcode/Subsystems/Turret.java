@@ -21,7 +21,16 @@ public class Turret {
     // How much of the aiming error each camera frame aims to remove. 1.0 aims
     // straight at the tag; a bit less stops it overshooting while the camera
     // catches up. Raise if it stops short of the tag, lower if it swings past.
-    private static final double KP = 0.8;
+    private static final double KP = 0.9;
+
+    // How old a camera frame is by the time the code reads it, plus how far the
+    // servos lag behind their commands (seconds). Each correction is added to
+    // where the turret was pointing when the frame was taken, not where it is
+    // now, so the same error isn't corrected twice (that's what made it
+    // overshoot when it first locked on). If it still swings past the tag when
+    // it locks on, try 0.02 higher; if it starts wobbling back and forth, it's
+    // too high, so go 0.02 lower. 0 turns this off.
+    private static final double CAMERA_DELAY_SECONDS = 0.05;
 
     // Ignore errors smaller than this so the turret doesn't jitter on target.
     private static final double DEADBAND_DEGREES = 1.0;
@@ -29,7 +38,7 @@ public class Turret {
     // Top turning speed. The turret glides toward its target at up to this
     // speed every loop instead of jumping once per camera frame, which is
     // what made it tick. Raise for snappier tracking, lower if it's jerky.
-    private static final double MAX_SPEED_DEGREES_PER_SECOND = 450.0;
+    private static final double MAX_SPEED_DEGREES_PER_SECOND = 1000.0;
 
     // Loop time assumed on the first call, before a real one has been measured.
     private static final double DEFAULT_LOOP_SECONDS = 0.02;
@@ -44,25 +53,19 @@ public class Turret {
     // Servo position where the turret (and Limelight) points straight forward.
     private static final double CENTER_POSITION = 0.50;
 
-    // How far the turret may turn each way from center, seen from above. It
-    // hits a hard stop about 30deg clockwise, so this stays a little short of
-    // that to keep the servos from straining against it. Counterclockwise has
-    // 350deg+ of room, but the servo only reaches 175deg past center
-    // (0.5 x 350deg), so that side is limited by the servo, not the turret.
-    private static final double CLOCKWISE_LIMIT_DEGREES = 25.0;
-    private static final double COUNTERCLOCKWISE_LIMIT_DEGREES = 170.0;
+    // The two ends of the turret's travel, as LEFT servo positions (0 to 1).
+    // The turret (camera and odometry aiming) never goes outside these. Measure
+    // them with the "Turret Limit Finder" OpMode: drive the turret to each end
+    // of the range you want, press A at one end and B at the other, and copy
+    // the numbers here. Order doesn't matter.
+    // Defaults (not yet measured): 170deg one way and 25deg the other from center.
+    private static final double LIMIT_POSITION_A = 0.014;
+    private static final double LIMIT_POSITION_B = 0.571;
 
-    // Servo positions for those limits. Clockwise is the same way as positive
-    // tx (tag to the right), so DIRECTION also says which way the servo turns
-    // clockwise. Flipping DIRECTION keeps the short limit on the clockwise side.
-    private static final double CLOCKWISE_POSITION =
-            CENTER_POSITION + DIRECTION * CLOCKWISE_LIMIT_DEGREES / TURRET_DEGREES_PER_SERVO_UNIT;
-    private static final double COUNTERCLOCKWISE_POSITION =
-            CENTER_POSITION - DIRECTION * COUNTERCLOCKWISE_LIMIT_DEGREES / TURRET_DEGREES_PER_SERVO_UNIT;
     private static final double MIN_POSITION =
-            Math.max(0.0, Math.min(CLOCKWISE_POSITION, COUNTERCLOCKWISE_POSITION));
+            Math.max(0.0, Math.min(LIMIT_POSITION_A, LIMIT_POSITION_B));
     private static final double MAX_POSITION =
-            Math.min(1.0, Math.max(CLOCKWISE_POSITION, COUNTERCLOCKWISE_POSITION));
+            Math.min(1.0, Math.max(LIMIT_POSITION_A, LIMIT_POSITION_B));
 
     // Whether the right servo runs mirrored to the left one. If the servos
     // fight each other (right one strains or jitters off center), flip this.
@@ -83,6 +86,26 @@ public class Turret {
     private double lastFrameTimestamp = -1;
     private double lastSeenTime;
     private double lastLoopTime = -1;
+
+    // Recent servo commands (time in seconds, position), newest at historyHead,
+    // so track() can look up where the turret pointed when a frame was taken.
+    private static final int HISTORY_SIZE = 64;
+    private final double[] historyTime = new double[HISTORY_SIZE];
+    private final double[] historyPosition = new double[HISTORY_SIZE];
+    private int historyHead = -1;
+    private int historyCount = 0;
+
+    // Robot heading from odometry (degrees, counterclockwise = +), if the OpMode
+    // gives it. Lets the turret turn against the robot's own turning right away
+    // instead of waiting for the next camera frame to show the tag moved.
+    private boolean hasHeading;
+    private double robotHeadingDeg;
+    private double lastLoopHeadingDeg;
+    private boolean hasLastLoopHeading;
+    private final double[] headingTime = new double[HISTORY_SIZE];
+    private final double[] headingValue = new double[HISTORY_SIZE];
+    private int headingHead = -1;
+    private int headingCount = 0;
 
     /**
      * @param hardwareMap      the OpMode's hardwareMap
@@ -110,12 +133,22 @@ public class Turret {
     public void track(Double txDegrees, double frameTimestamp) {
         tracking = txDegrees != null;
         double now = System.nanoTime() / 1e9;
-        double dt = lastLoopTime < 0 ? DEFAULT_LOOP_SECONDS : now - lastLoopTime;
-        lastLoopTime = now;
+
+        // Robot turned since last loop: turn the turret the other way by the same
+        // amount so it keeps pointing at the same spot on the field.
+        if (hasHeading) {
+            recordHeading(now);
+            if (hasLastLoopHeading) {
+                targetPosition = clampPosition(targetPosition
+                        + DIRECTION * wrapDegrees(robotHeadingDeg - lastLoopHeadingDeg) / TURRET_DEGREES_PER_SERVO_UNIT);
+            }
+            lastLoopHeadingDeg = robotHeadingDeg;
+            hasLastLoopHeading = true;
+        }
 
         if (!tracking) {
             if (now - lastSeenTime > LOST_TAG_RETURN_SECONDS) {
-                targetPosition = CENTER_POSITION;
+                targetPosition = clampPosition(CENTER_POSITION);
             }
         } else {
             lastSeenTime = now;
@@ -124,13 +157,41 @@ public class Turret {
             if (frameTimestamp != lastFrameTimestamp) {
                 lastFrameTimestamp = frameTimestamp;
                 if (Math.abs(txDegrees) >= DEADBAND_DEGREES) {
-                    targetPosition = clampPosition(
-                            currentPosition + DIRECTION * KP * txDegrees / TURRET_DEGREES_PER_SERVO_UNIT);
+                    // tx is the error as of when the frame was taken, so correct
+                    // from where the turret pointed then.
+                    double takenAt = now - CAMERA_DELAY_SECONDS;
+                    double positionWhenTaken = positionAt(takenAt);
+                    // Plus however far the robot has turned since then
+                    double turnedSince = hasHeading ? wrapDegrees(robotHeadingDeg - headingAt(takenAt)) : 0;
+                    targetPosition = clampPosition(positionWhenTaken
+                            + DIRECTION * (KP * txDegrees + turnedSince) / TURRET_DEGREES_PER_SERVO_UNIT);
                 }
             }
         }
 
-        // Glide toward the target, no faster than the speed limit
+        glideToTarget(now);
+    }
+
+    /**
+     * Call every loop instead of {@link #track} when the camera can't see the
+     * tags but odometry knows where the goal is. Glides to the given turret
+     * angle (degrees from the robot's front, positive = right, same as
+     * {@link #getAngleDegrees()}) and doesn't return to center.
+     */
+    public void aimAtAngle(double turretDegrees) {
+        tracking = false;
+        hasLastLoopHeading = false;   // aimed from odometry directly; no turn carry-over
+        double now = System.nanoTime() / 1e9;
+        lastSeenTime = now;
+        targetPosition = clampPosition(
+                CENTER_POSITION + DIRECTION * turretDegrees / TURRET_DEGREES_PER_SERVO_UNIT);
+        glideToTarget(now);
+    }
+
+    /** Moves toward targetPosition, no faster than the speed limit. */
+    private void glideToTarget(double now) {
+        double dt = lastLoopTime < 0 ? DEFAULT_LOOP_SECONDS : now - lastLoopTime;
+        lastLoopTime = now;
         double maxStep = MAX_SPEED_DEGREES_PER_SECOND * dt / TURRET_DEGREES_PER_SERVO_UNIT;
         double step = Math.max(-maxStep, Math.min(maxStep, targetPosition - currentPosition));
         if (step != 0) {
@@ -140,7 +201,7 @@ public class Turret {
 
     /** Snaps straight to center (used at INIT and Play). */
     public void center() {
-        targetPosition = CENTER_POSITION;
+        targetPosition = clampPosition(CENTER_POSITION);
         setPosition(CENTER_POSITION);
     }
 
@@ -149,7 +210,76 @@ public class Turret {
     }
 
     public void setPosition(double position) {
-        currentPosition = clampPosition(position);
+        applyPosition(clampPosition(position));
+    }
+
+    /**
+     * Moves the turret with NO travel limits. Only for the Turret Limit Finder,
+     * to measure where the limits should be; go slowly near the hard stops.
+     */
+    public void setPositionUnlimited(double position) {
+        targetPosition = Math.max(0.0, Math.min(1.0, position));
+        applyPosition(targetPosition);
+    }
+
+    /**
+     * Optional: give the robot's heading from odometry (degrees, counterclockwise
+     * = +) every loop, before {@link #track}. While tracking, the turret then
+     * turns against the robot's own turning right away. OpModes without
+     * odometry just don't call this.
+     */
+    public void setRobotHeading(double headingDegrees) {
+        robotHeadingDeg = headingDegrees;
+        hasHeading = true;
+    }
+
+    private void recordHeading(double now) {
+        headingHead = (headingHead + 1) % HISTORY_SIZE;
+        headingTime[headingHead] = now;
+        headingValue[headingHead] = robotHeadingDeg;
+        headingCount = Math.min(headingCount + 1, HISTORY_SIZE);
+    }
+
+    /** The robot heading recorded at the given time (same clock as positionAt). */
+    private double headingAt(double time) {
+        for (int i = 0; i < headingCount; i++) {
+            int index = (headingHead - i + HISTORY_SIZE) % HISTORY_SIZE;
+            if (headingTime[index] <= time) {
+                return headingValue[index];
+            }
+        }
+        return headingCount == 0 ? robotHeadingDeg
+                : headingValue[(headingHead - headingCount + 1 + HISTORY_SIZE) % HISTORY_SIZE];
+    }
+
+    private static double wrapDegrees(double degrees) {
+        while (degrees > 180) degrees -= 360;
+        while (degrees < -180) degrees += 360;
+        return degrees;
+    }
+
+    /** The position commanded at the given time (seconds, System.nanoTime() clock). */
+    private double positionAt(double time) {
+        if (historyCount == 0) {
+            return currentPosition;
+        }
+        // Newest to oldest: the last command sent at or before that time
+        for (int i = 0; i < historyCount; i++) {
+            int index = (historyHead - i + HISTORY_SIZE) % HISTORY_SIZE;
+            if (historyTime[index] <= time) {
+                return historyPosition[index];
+            }
+        }
+        // Older than the history goes back: use the oldest one kept
+        return historyPosition[(historyHead - historyCount + 1 + HISTORY_SIZE) % HISTORY_SIZE];
+    }
+
+    private void applyPosition(double position) {
+        currentPosition = position;
+        historyHead = (historyHead + 1) % HISTORY_SIZE;
+        historyTime[historyHead] = System.nanoTime() / 1e9;
+        historyPosition[historyHead] = position;
+        historyCount = Math.min(historyCount + 1, HISTORY_SIZE);
         leftServo.setPosition(currentPosition);
 
         // Same turret angle on the right servo, in its own direction and range

@@ -39,6 +39,11 @@ public class RedCamera {
     // Limelight pipeline index set up for AprilTags (36h11) in the Limelight web UI
     private static final int APRILTAG_PIPELINE = 0;
 
+    // How far the Limelight is tilted up from level to see the hive.
+    // Same camera as BlueCamera, so keep the two values matched.
+    // Placeholder: measure the mount angle on the robot.
+    private static final double CAMERA_PITCH_DEGREES = 20.0;
+
     // Red CELL AprilTag IDs
     public static final int[] AUDIENCE_SIDE_TAG_IDS = {34, 35, 36, 37};
     public static final int[] FAR_SIDE_TAG_IDS = {30, 31, 32, 33};
@@ -168,6 +173,14 @@ public class RedCamera {
     }
 
     /**
+     * True if the camera is locked onto the far-side tag group, false for the
+     * audience side. Updated by getAimDetections() / getAimTx().
+     */
+    public boolean isAimingFarSide() {
+        return aimingFarSide;
+    }
+
+    /**
      * Limelight tx (degrees, positive = right) to aim the turret at, or null
      * if no red tags are visible. Averages the visible tags of one side so
      * the turret points at the middle of that cluster.
@@ -205,6 +218,32 @@ public class RedCamera {
         return result == null ? 0 : result.getTimestamp();
     }
 
+    /**
+     * Middle of the tag group being aimed at, relative to the camera (inches,
+     * x right, y forward along the floor), or null if none are visible.
+     * Unfiltered; GoalTracker does its own smoothing on the field position.
+     */
+    public TagPose getAimCenterPose() {
+        double sumX = 0, sumY = 0, sumZ = 0;
+        int count = 0;
+        for (LLResultTypes.FiducialResult detection : getAimDetections()) {
+            TagPose pose = getTagPose(detection);
+            if (pose == null) {
+                continue;
+            }
+            sumX += pose.x;
+            sumY += pose.y;
+            sumZ += pose.z;
+            count++;
+        }
+        if (count == 0) {
+            return null;
+        }
+        double x = sumX / count;
+        double y = sumY / count;
+        return new TagPose(x, y, sumZ / count, 0, Math.hypot(x, y), Math.toDegrees(Math.atan2(-x, y)));
+    }
+
     /** Tag pose relative to the camera, in inches and degrees (x right, y forward, z up). */
     public static class TagPose {
         public final double x, y, z, yaw, range, bearing;
@@ -226,9 +265,11 @@ public class RedCamera {
         }
         // Limelight camera space: +x right, +y down, +z out of the lens
         Position position = pose.getPosition().toUnit(DistanceUnit.INCH);
+        // Undo the upward tilt so y is distance along the floor and z is height
+        double pitch = Math.toRadians(CAMERA_PITCH_DEGREES);
         double x = position.x;
-        double y = position.z;
-        double z = -position.y;
+        double y = position.z * Math.cos(pitch) + position.y * Math.sin(pitch);
+        double z = position.z * Math.sin(pitch) - position.y * Math.cos(pitch);
         double yaw = pose.getOrientation().getYaw(AngleUnit.DEGREES);
         double range = Math.hypot(x, y);
         // Limelight tx is positive to the right; bearing is positive to the left

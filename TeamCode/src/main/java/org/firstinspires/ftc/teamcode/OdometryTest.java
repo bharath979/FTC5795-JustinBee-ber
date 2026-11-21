@@ -5,10 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.teamcode.Subsystems.PinPointDriver;
+import org.firstinspires.ftc.teamcode.Subsystems.Odometry;
 
 /**
  * goBILDA Pinpoint odometry (2 dead wheels: 1 forward "X" pod + 1 strafe "Y" pod).
@@ -26,62 +23,10 @@ import org.firstinspires.ftc.teamcode.Subsystems.PinPointDriver;
 @TeleOp(name = "Pinpoint Odometry Test", group = "Test")
 public class OdometryTest extends LinearOpMode {
 
-    // ====================== MEASURE AND EDIT THESE ======================
-    // Origin = the point on the robot you want (0,0) to be (usually center of rotation).
-    // X pod offset: how far LEFT of origin the forward pod sits (left = +, right = -)
-    // Y pod offset: how far FORWARD of origin the strafe pod sits (forward = +, back = -)
-    static final double X_POD_OFFSET_MM = -84.0;
-    static final double Y_POD_OFFSET_MM = -168.0;
+    // Pod offsets and directions live in Subsystems/Odometry.java.
 
-    // Flip these if a value goes negative when it should be positive
-    static final boolean X_POD_REVERSED = false;
-    static final boolean Y_POD_REVERSED = false;
-
-    // Drive motor names / directions (edit to match your robot)
+    // Drive motor names (edit to match your robot)
     static final String FL = "frontLeftMotor", FR = "frontRightMotor", BL = "backLeftMotor", BR = "backRightMotor";
-    // ====================================================================
-
-    /** Small wrapper so you can reuse this in Auto as well. */
-    public static class Odometry {
-        private final PinPointDriver pinpoint;
-
-        public Odometry(com.qualcomm.robotcore.hardware.HardwareMap hw, String name) {
-            pinpoint = hw.get(PinPointDriver.class, name);
-
-            pinpoint.setOffsets(X_POD_OFFSET_MM, Y_POD_OFFSET_MM, DistanceUnit.MM);
-            pinpoint.setEncoderResolution(PinPointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-            pinpoint.setEncoderDirections(
-                    X_POD_REVERSED ? PinPointDriver.EncoderDirection.REVERSED
-                            : PinPointDriver.EncoderDirection.FORWARD,
-                    Y_POD_REVERSED ? PinPointDriver.EncoderDirection.REVERSED
-                            : PinPointDriver.EncoderDirection.FORWARD);
-
-            // Zeros position and calibrates the IMU -- robot must be STILL (~0.25 s)
-            pinpoint.resetPosAndIMU();
-        }
-
-        /** Call once every loop. */
-        public void update() { pinpoint.update(); }
-
-        /** Set the starting pose (e.g. your auto start position). inches / degrees. */
-        public void setPose(double xIn, double yIn, double headingDeg) {
-            pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, xIn, yIn, AngleUnit.DEGREES, headingDeg));
-        }
-
-        public void reset() { pinpoint.resetPosAndIMU(); }
-
-        public double getX()          { return pinpoint.getPosition().getX(DistanceUnit.INCH); }
-        public double getY()          { return pinpoint.getPosition().getY(DistanceUnit.INCH); }
-        public double getHeadingRad() { return pinpoint.getPosition().getHeading(AngleUnit.RADIANS); }
-        public double getHeadingDeg() { return pinpoint.getPosition().getHeading(AngleUnit.DEGREES); }
-
-        public double getVelX()       { return pinpoint.getVelX(DistanceUnit.INCH); }      // in/s
-        public double getVelY()       { return pinpoint.getVelY(DistanceUnit.INCH); }      // in/s
-        public double getVelHeading() { return pinpoint.getHeadingVelocity(AngleUnit.DEGREES.getUnnormalized()); }
-
-        public double getFrequency()  { return pinpoint.getFrequency(); }
-        public PinPointDriver.DeviceStatus getStatus() { return pinpoint.getDeviceStatus(); }
-    }
 
     @Override
     public void runOpMode() {
